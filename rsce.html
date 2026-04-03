@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>55nm RSCE 反短通道效應 — 互動動畫</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 回到首頁</a>
+
+        <h1>55nm 反短通道效應 (RSCE)</h1>
+        <p class="subtitle">Halo Implant 導致通道縮短時 V<sub>th</sub> 反常上升</p>
+
+        <div class="main-layout">
+            <div class="panel">
+                <h2>MOSFET 截面圖</h2>
+                <canvas id="mosfetCanvas" width="500" height="360"></canvas>
+            </div>
+            <div class="panel">
+                <h2>V<sub>th</sub> vs 通道長度 L</h2>
+                <canvas id="vthCanvas" width="500" height="360"></canvas>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="slider-group">
+                <label for="channelLength">通道長度 L = <span id="lValue">200</span> nm</label>
+                <input type="range" id="channelLength" min="40" max="500" value="200" step="5">
+                <div class="slider-labels">
+                    <span>40 nm</span>
+                    <span>500 nm</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box" id="infoBox">
+            <h3>📐 目前狀態</h3>
+            <p id="infoText">拖動滑桿來改變通道長度，觀察 Halo Implant 如何影響 V<sub>th</sub>。</p>
+        </div>
+
+        <div class="physics-note">
+            <h3>物理原理</h3>
+            <ul>
+                <li><strong>傳統預期：</strong>通道越短 → V<sub>th</sub> 下降（短通道效應 SCE）</li>
+                <li><strong>55nm 現實：</strong>Halo Implant 的高濃度摻雜口袋在短通道時<strong>重疊</strong>，導致通道中央摻雜濃度飆高</li>
+                <li><strong>結果：</strong>L 縮短 → V<sub>th</sub> 反常上升（RSCE）</li>
+                <li><strong>設計影響：</strong>元件匹配更困難，類比設計需要更大的過驅動電壓</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="rsce.js"></script>
+</body>
+</html>

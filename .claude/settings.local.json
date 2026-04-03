@@ -1,0 +1,11 @@
+{
+  "enabledMcpjsonServers": [
+    "notion"
+  ],
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Bash(node -e ':*)"
+    ]
+  }
+}

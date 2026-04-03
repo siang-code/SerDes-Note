@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SerDes Note Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #050a05;
+  --bg2:       #0b120b;
+  --phosphor:  #39e87a;
+  --phosphor2: #1fa84e;
+  --amber:     #f5a623;
+  --dim:       #2a4a2a;
+  --border:    rgba(57,232,122,0.18);
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui:   'Rajdhani', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 3px);
+  pointer-events: none; z-index: 1000;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,60,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,60,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  position: relative;
+  z-index: 1;
+}
+
+.hub-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.2rem;
+  margin-bottom: 2.5rem;
+}
+.hub-tag {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--phosphor2);
+  text-transform: uppercase;
+}
+.hub-title {
+  font-family: var(--font-ui);
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--phosphor);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(57,232,122,0.4);
+  margin-top: 0.3rem;
+}
+.hub-sub {
+  font-size: 0.75rem;
+  color: var(--phosphor2);
+  margin-top: 0.4rem;
+}
+
+/* ── Category group ── */
+.category {
+  margin-bottom: 2.5rem;
+}
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(245,166,35,0.2);
+}
+.category-icon {
+  font-size: 1rem;
+  color: var(--amber);
+}
+.category-name {
+  font-family: var(--font-ui);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+}
+.category-count {
+  font-size: 0.7rem;
+  color: var(--phosphor2);
+  margin-left: auto;
+}
+
+/* ── Note card ── */
+.note-card {
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  margin-bottom: 0.5rem;
+  transition: border-color 0.2s;
+  overflow: hidden;
+}
+.note-card:hover, .note-card:focus-within { border-color: var(--phosphor2); }
+.note-card.expanded { border-color: var(--phosphor); }
+
+.note-card-head {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-align: left;
+  gap: 1rem;
+  outline: none;
+  transition: background 0.15s;
+}
+.note-card-head:hover { background: rgba(57,232,122,0.03); }
+.note-card-head:focus { background: rgba(57,232,122,0.06); }
+
+.note-card-name {
+  flex: 1;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+.note-card-date {
+  font-size: 0.72rem;
+  color: var(--phosphor2);
+  min-width: 6rem;
+  text-align: right;
+}
+.note-card-toggle {
+  color: var(--phosphor2);
+  font-size: 0.7rem;
+  transition: transform 0.25s;
+  min-width: 1rem;
+}
+.note-card.expanded .note-card-toggle { transform: rotate(90deg); color: var(--phosphor); }
+
+.note-card-body {
+  display: none;
+  padding: 0.7rem 1rem 0.9rem 1rem;
+  border-top: 1px solid var(--dim);
+  background: rgba(57,232,122,0.02);
+}
+.note-card.expanded .note-card-body { display: block; }
+
+.note-card-intro {
+  font-size: 0.8rem;
+  color: #8be8aa;
+  line-height: 1.7;
+  margin-bottom: 0.7rem;
+}
+.note-card-link {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--amber);
+  text-decoration: none;
+  border: 1px solid var(--amber);
+  padding: 0.3rem 0.8rem;
+  border-radius: 2px;
+  transition: background 0.2s;
+  letter-spacing: 0.08em;
+}
+.note-card-link:hover { background: rgba(245,166,35,0.1); }
+
+/* ── Search ── */
+.search-row {
+  margin-bottom: 2rem;
+}
+.search-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.55rem 0.9rem;
+  outline: none;
+  border-radius: 2px;
+  caret-color: var(--phosphor);
+  transition: border-color 0.2s;
+}
+.search-input:focus { border-color: var(--phosphor2); }
+.search-input::placeholder { color: var(--dim); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="hub-header">
+    <div class="hub-tag">SERDES // IC DESIGN // NOTE HUB</div>
+    <h1 class="hub-title">SerDes 筆記總覽</h1>
+    <div class="hub-sub" id="hub-sub">—</div>
+  </div>
+
+  <div class="search-row">
+    <input class="search-input" id="search" placeholder="搜尋筆記 (例如 PLL, CDR, TIA...)" autocomplete="off">
+  </div>
+
+  <div id="index-container"></div>
+</div>
+
+<script>
+const INDEX_DATA = [{"category":"OTHER","notes":[{"date":"2026-04-03","html":"notes/03ddf372-9b63-4078-b213-2440f5f0e07f.html","name":"03ddf372-9b63-4078-b213-2440f5f0e07f","intro":"[Phase-Locked Loop (PLL) ?蝞?????鞈???\u0026 ?銋???]"}]},{"category":"PLL","notes":[{"date":"2026-04-03","html":"notes/PLL-L1-P1.html","name":"PLL-L1-P1","intro":"PLL 頻率合成器與 CDR 基礎 (Frequency Synthesizer \u0026 Clock Data Recovery)"}]},{"category":"TIA","notes":[{"date":"2026-04-03","html":"notes/TIA-L1-P1.html","name":"TIA-L1-P1","intro":"光通訊接收端前段：光電二極體 (PhotoDiode) 與轉阻放大器 (TIA)"}]}];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('index-container');
+  const searchInput = document.getElementById('search');
+  let totalNotes = 0;
+
+  INDEX_DATA.forEach(group => { totalNotes += group.notes.length; });
+  document.getElementById('hub-sub').textContent = `共 ${totalNotes} 份筆記，${INDEX_DATA.length} 個分類`;
+
+  const categoryIcons = {
+    PLL:'⏱', CDR:'🔄', TIA:'⚡', EQ:'📊', LA:'📐', RX:'📡', TX:'📤', RSCE:'🔬'
+  };
+
+  function render(filter) {
+    container.innerHTML = '';
+    const kw = (filter || '').toLowerCase();
+
+    INDEX_DATA.forEach(group => {
+      const filtered = group.notes.filter(n =>
+        !kw || n.name.toLowerCase().includes(kw) || (n.intro && n.intro.toLowerCase().includes(kw))
+      );
+      if (!filtered.length) return;
+
+      const catDiv = document.createElement('div');
+      catDiv.className = 'category';
+      const icon = categoryIcons[group.category] || '📁';
+      catDiv.innerHTML = `
+        <div class="category-header">
+          <span class="category-icon">${icon}</span>
+          <span class="category-name">${group.category}</span>
+          <span class="category-count">${filtered.length} 份</span>
+        </div>`;
+
+      filtered.forEach(note => {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+        card.innerHTML = `
+          <button class="note-card-head" tabindex="0">
+            <span class="note-card-name">${note.name}</span>
+            <span class="note-card-date">${note.date || ''}</span>
+            <span class="note-card-toggle">▶</span>
+          </button>
+          <div class="note-card-body">
+            <div class="note-card-intro">${note.intro || '（無概覽）'}</div>
+            <a class="note-card-link" href="${note.html}">開啟筆記 →</a>
+          </div>`;
+
+        const btn = card.querySelector('.note-card-head');
+        btn.addEventListener('click', () => card.classList.toggle('expanded'));
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            card.classList.toggle('expanded');
+          }
+        });
+
+        catDiv.appendChild(card);
+      });
+
+      container.appendChild(catDiv);
+    });
+  }
+
+  render();
+  searchInput.addEventListener('input', () => render(searchInput.value));
+});
+</script>
+</body>
+</html>
