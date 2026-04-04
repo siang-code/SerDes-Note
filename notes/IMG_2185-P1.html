@@ -745,7 +745,9 @@ body::after {
     </div>
   </div>
 
-  <div id="img-wrap"></div>
+  <div class="image-wrap" id="img-wrap">
+    <img class="note-img" id="note-img" src="" alt="筆記原圖">
+  </div>
 
   <div id="sections-container"></div>
 
@@ -813,7 +815,7 @@ body::after {
 
 <script>
 // ── NOTE_DATA injected by process_note.ps1 ──
-/*INJECT_NOTE_DATA*/
+const NOTE_DATA = {"date":"2026-04-04","title":"IMG_2185-P1","sections":[{"content":"","type":"intro"},{"title":"數學推導","content":"","type":"math"},{"title":"單位解析","content":"","type":"units"},{"title":"白話物理意義","content":"","type":"plain"},{"title":"生活化比喻","content":"","type":"analogy"},{"title":"面試必考點","items":[],"type":"quiz"},{"content":"","type":"mnemonic"}],"imageUrl":"../images/IMG_2185-P1.jpg"};
 
 // ── Render ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -821,22 +823,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
   document.getElementById('note-title').textContent = NOTE_DATA.title;
   document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
-  // 支援單張 imageUrl 或多張 imageUrls
-  const urls = NOTE_DATA.imageUrls || (NOTE_DATA.imageUrl ? [NOTE_DATA.imageUrl] : []);
-  document.getElementById('note-src').textContent = '原始圖片：' + urls.join(', ');
+  document.getElementById('note-src').textContent = '原始圖片：' + NOTE_DATA.imageUrl;
 
-  const imgWrap = document.getElementById('img-wrap');
-  urls.forEach((url, idx) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'image-wrap';
-    wrap.style.pageBreakAfter = idx < urls.length - 1 ? 'always' : 'auto';
-    const img = document.createElement('img');
-    img.className = 'note-img';
-    img.src = url;
-    img.alt = '筆記原圖 ' + (idx + 1);
-    wrap.appendChild(img);
-    imgWrap.appendChild(wrap);
-  });
+  const img = document.getElementById('note-img');
+  img.src = NOTE_DATA.imageUrl;
 
   const container = document.getElementById('sections-container');
   const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };

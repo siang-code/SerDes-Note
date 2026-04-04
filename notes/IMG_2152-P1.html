@@ -745,7 +745,9 @@ body::after {
     </div>
   </div>
 
-  <div id="img-wrap"></div>
+  <div class="image-wrap" id="img-wrap">
+    <img class="note-img" id="note-img" src="" alt="筆記原圖">
+  </div>
 
   <div id="sections-container"></div>
 
@@ -813,7 +815,7 @@ body::after {
 
 <script>
 // ── NOTE_DATA injected by process_note.ps1 ──
-/*INJECT_NOTE_DATA*/
+const NOTE_DATA = {"date":"2026-04-04","title":"IMG_2152-P1","sections":[{"content":"[製程微縮的物理挑戰：反窄通道效應 (INWE)]","type":"intro"},{"title":"數學推導","content":"投影片講述了概念，但在 IC 設計的 SPICE Model（如 BSIM）中，我們是如何將這個現象數學化的？我們不能只會背結果，要看懂推導邏輯：\r\n\r\n1. **基礎閾值電壓公式**：\r\n   長寬足夠大的理想電晶體，其閾值電壓 $V_{th0}$ 由平坦帶電壓、費米能階與空乏區電荷決定：\r\n   $V_{th0} = \\Phi_{ms} + 2\\Phi_F + \\frac{Q_{dep}}{C_{ox}}$\r\n\r\n2. **邊緣電場耦合增強 (Fringing Field Effect)**：\r\n   在 STI (Shallow Trench Isolation) 隔離製程中，Gate 多晶矽會些微「跨過」並「包覆」到 Active Area 的側邊。這導致在通道邊緣（Edge），Gate 對 Channel 的電力線（Fringing Field）比中心點（Center）更密集。\r\n   局部等效電容增加：$C_{ox, edge} \u003e C_{ox, center}$\r\n\r\n3. **邊緣局部 $V_{th}$ 下降**：\r\n   因為 $V_{th} \\propto \\frac{1}{C_{ox}}$，局部 $C_{ox}$ 上升，代表只需更小的 Gate 電壓就能將「邊緣的通道」反轉導通。\r\n   $V_{th, edge} \u003c V_{th, center}$\r\n\r\n4. **巨觀等效模型 (INWE 數學表示)**：\r\n   我們將整個電晶體視為「中間主通道」與「兩個邊緣通道」並聯。當通道寬度 $W$ 變小，邊緣通道所佔的比例 $(\\frac{W_{edge}}{W})$ 變大。由於邊緣提早導通，巨觀上量測到的整體 $V_{th}$ 就跟著下降。\r\n   在 BSIM 模型中，Vth 隨寬度變化的項次可近似表示為：\r\n   $V_{th}(W) \\approx V_{th0} - K_{INWE} \\frac{t_{ox}}{W_{eff}}$\r\n   *(備註：減號 $(-)$ 代表 Vth 隨 W 縮小而下降，即「反」窄通道效應；若為傳統 LOCOS 製程的鳥嘴效應，則是加號，即正窄通道效應 NWE)*","type":"math"},{"title":"單位解析","content":"**公式單位消去：**\r\n來驗證基礎公式 $V_{th} \\propto \\frac{Q_{dep}}{C_{ox}}$ 的單位：\r\n- $Q_{dep}$（空乏區電荷面密度）：單位為 $[C/m^2]$ (庫侖每平方公尺)\r\n- $C_{ox}$（氧化層單位面積電容）：單位為 $[F/m^2]$ (法拉每平方公尺)\r\n- 消去過程：$[C/m^2] \\div [F/m^2] = [C/F]$\r\n- 根據電容定義 $C = Q/V$，可推得 $[V] = [C/F]$。單位完美吻合為伏特 $[V]$。\r\n\r\n**圖表單位推斷：**\r\n📈 **投影片右側圖表單位推斷：**\r\n仔細看右側那張密密麻麻的 SPICE 模擬圖，即便沒寫明軸向名稱，身為設計工程師必須一眼看穿：\r\n- **X 軸：通道長度 Length ($L$)**。\r\n  - **單位推斷：** $[m]$，具體標示為 $[nm]$ 到 $[\\mu m]$ 級別。\r\n  - **典型範圍：** 對數座標，從 $54nm$、$180nm$ 一路拉到 $1\\mu m$ 以上。\r\n- **Y 軸：閾值電壓 ($V_{th}$)**。\r\n  - **單位推斷：** 伏特 $[V]$，具體標示為毫伏 $[mV]$。\r\n  - **典型範圍：** 線性座標，從 $100mV$ 到 $600mV$。圖中可以看出，相同 Length 下，W 越小（藍線）的曲線整體位置越低，這正是 INWE 的鐵證。","type":"units"},{"title":"白話物理意義","content":"因為 STI 製程讓 Gate 從側邊「漏電場」幫忙吸電子，當電晶體做得越窄，這種「側邊助攻」的比例就越高，導致電晶體「不費吹灰之力」就提早導通了（Vth 變小）。","type":"plain"},{"title":"生活化比喻","content":"想像你在**烤肉**。\r\n如果是一塊**超大塊的牛排（W 很大）**，爐火（Gate）主要只從正下方烤，熱量要慢慢傳進去。\r\n如果你把牛排切成**極細的肉絲（W 很小）**，爐火不僅從下方烤，熱氣還會從兩側「包抄」上來（Fringing Field）。因為兩邊同時受熱，細肉絲一下子就熟了（提早導通，Vth 變低）。","type":"analogy"},{"title":"面試必考點","items":[{"question":"在 28nm/55nm 設計高速 Current Mode Logic (CML) Buffer 或 VCO 時，如果為了追求速度（降低寄生電容）而大量使用 Minimum $W$ 的電晶體，會發生什麼災難？","answer":"** 會觸發嚴重的 INWE。Minimum $W$ 導致 $V_{th}$ 陡降且對製程變異（$\\Delta W$）極度敏感。在 VCO 這種需要精準匹配的差動電路中，這會造成巨大的 Mismatch，導致嚴重的 Phase Noise 惡化與 Duty Cycle Distortion。"},{"question":"在佈局（Layout）上，如果你需要一個小的寄生電容但又必須避免 INWE 造成的 Mismatch，該怎麼畫？","answer":"** 絕對避免使用製程允許的 Minimum $W$。應選擇一個稍微大於 Minimum $W$ 的安全值（例如 3~5 倍 min W，使其脫離 Vth 下降最陡峭的區間），並利用 Multi-finger 結構來拼湊所需的總 $W/L$ 比例。"},{"question":"傳統 .18µm 製程跟現在的 55nm 以下製程，Narrow Width Effect 有何根本差異？為什麼？","answer":"** .18µm 多用 LOCOS 隔離，邊緣有「鳥嘴效應（Bird\u0027s Beak）」，邊緣氧化層變厚，使 Vth 隨 W 變小而**升高**（NWE）。55nm 則全面採用 STI，Gate 稍微凹進側壁形成 Fringing Field，使 Vth 隨 W 變小而**下降**（INWE）。"}],"type":"quiz"},{"content":"**「窄肉側烤易熟，STI 邊緣漏電，W 越窄 Vth 越跌」**","type":"mnemonic"}],"imageUrl":"../images/IMG_2152-P1.jpg"};
 
 // ── Render ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -821,22 +823,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
   document.getElementById('note-title').textContent = NOTE_DATA.title;
   document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
-  // 支援單張 imageUrl 或多張 imageUrls
-  const urls = NOTE_DATA.imageUrls || (NOTE_DATA.imageUrl ? [NOTE_DATA.imageUrl] : []);
-  document.getElementById('note-src').textContent = '原始圖片：' + urls.join(', ');
+  document.getElementById('note-src').textContent = '原始圖片：' + NOTE_DATA.imageUrl;
 
-  const imgWrap = document.getElementById('img-wrap');
-  urls.forEach((url, idx) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'image-wrap';
-    wrap.style.pageBreakAfter = idx < urls.length - 1 ? 'always' : 'auto';
-    const img = document.createElement('img');
-    img.className = 'note-img';
-    img.src = url;
-    img.alt = '筆記原圖 ' + (idx + 1);
-    wrap.appendChild(img);
-    imgWrap.appendChild(wrap);
-  });
+  const img = document.getElementById('note-img');
+  img.src = NOTE_DATA.imageUrl;
 
   const container = document.getElementById('sections-container');
   const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };

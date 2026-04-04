@@ -745,7 +745,9 @@ body::after {
     </div>
   </div>
 
-  <div id="img-wrap"></div>
+  <div class="image-wrap" id="img-wrap">
+    <img class="note-img" id="note-img" src="" alt="筆記原圖">
+  </div>
 
   <div id="sections-container"></div>
 
@@ -813,7 +815,7 @@ body::after {
 
 <script>
 // ── NOTE_DATA injected by process_note.ps1 ──
-/*INJECT_NOTE_DATA*/
+const NOTE_DATA = {"date":"2026-04-04","title":"IMG_2150-P1","sections":[{"content":"[主題名稱] DIBL (Drain-Induced Barrier Lowering) 與先進製程 Vth 衰退效應","type":"intro"},{"title":"數學推導","content":"在先進製程（如筆記中的 55nm）中，我們不能只看理想長通道的飽和區電流公式。當發生 DIBL 效應時，$V_{th}$ 不再是常數，而是會被汲極-源極電壓 $V_{DS}$ 直接吃掉一部分：\r\n\r\n**Step 1: 定義受 DIBL 影響的臨界電壓**\r\n$V_{th}(V_{DS}) = V_{th0} - \\eta \\cdot V_{DS}$\r\n（其中 $\\eta$ 為 DIBL 係數，通道 $L$ 越短，$\\eta$ 越大）\r\n\r\n**Step 2: 將變動的 $V_{th}$ 帶回電流公式求輸出電導 $g_{ds}$**\r\n我們將受影響的 $V_{th}$ 帶入飽和區電流式 $I_D = \\frac{1}{2} \\mu C_{ox} \\frac{W}{L} (V_{GS} - V_{th})^2$，並對 $V_{DS}$ 偏微分求 $g_{ds}$：\r\n$g_{ds} = \\frac{\\partial I_D}{\\partial V_{DS}}$\r\n$= \\frac{\\partial}{\\partial V_{DS}} \\left[ \\frac{1}{2} \\mu C_{ox} \\frac{W}{L} (V_{GS} - (V_{th0} - \\eta V_{DS}))^2 \\right]$\r\n（應用連鎖律展開）\r\n$= 2 \\cdot \\frac{1}{2} \\mu C_{ox} \\frac{W}{L} (V_{GS} - V_{th}) \\cdot \\frac{\\partial}{\\partial V_{DS}}(V_{GS} - V_{th0} + \\eta V_{DS})$\r\n$= \\left[ \\mu C_{ox} \\frac{W}{L} (V_{GS} - V_{th}) \\right] \\cdot \\eta$\r\n\r\n**Step 3: 找出與轉導 $g_m$ 的關係**\r\n由於上式中括號內正好是轉導 $g_m$ 的定義式（$g_m = \\frac{\\partial I_D}{\\partial V_{GS}}$），因此可以得出致命的結論：\r\n$g_{ds} \\approx g_m \\cdot \\eta$\r\n\r\n**Step 4: 推導對本質增益 (Intrinsic Gain) 的毀滅性打擊**\r\n輸出阻抗 $R_o = \\frac{1}{g_{ds}} \\approx \\frac{1}{\\eta \\cdot g_m}$\r\n單級放大器的本質增益 $A_v$ 為：\r\n$A_v = g_m \\cdot R_o = g_m \\cdot \\frac{1}{\\eta \\cdot g_m} = \\frac{1}{\\eta}$\r\n\r\n這完美印證了投影片中說的**「本質增益 (Ro) 爛掉的元兇」**。在 54nm 這種短通道，$\\eta$ 變大，$R_o$ 急遽下降，導致電晶體所能提供的最大增益被 $\\frac{1}{\\eta}$ 狠狠卡死！","type":"math"},{"title":"單位解析","content":"**公式單位消去：**\r\n1. **DIBL 係數 $\\eta$**：\r\n   $\\eta = \\frac{\\Delta V_{th}}{\\Delta V_{DS}}$\r\n   $[\\eta] = \\frac{[V]}{[V]} = [無因次]$ (Dimensionless)\r\n2. **輸出電導 $g_{ds}$**：\r\n   $g_{ds} \\approx g_m \\cdot \\eta$\r\n   $[A/V] = [A/V] \\cdot [無因次]$ \r\n   (或稱為 Siemens $[S]$)\r\n3. **本質增益 $A_v$**：\r\n   $A_v = \\frac{1}{\\eta}$\r\n   $[V/V] = \\frac{1}{[無因次]} = [無因次]$ \r\n\r\n**圖表單位推斷：**\r\n📈 圖表單位推斷：\r\n- **X 軸**：通道長度 Length (L) $[m]$，對數刻度，圖中標示 $54n \\sim 1\\mu$，即 $54 \\text{ nm} \\sim 1 \\text{ }\\mu\\text{m}$。\r\n- **Y 軸**：臨界電壓 $V_{th}$ $[V]$，圖中標示範圍約為 $300m \\sim 600m$，即 $300 \\text{ mV} \\sim 600 \\text{ mV}$。\r\n*物理意義觀察：從圖中可明顯看出，當 L 退到左側極端 (54nm) 時，紅線（飽和區，高 $V_{DS}$）與藍線（線性區，低 $V_{DS}$）的 Y 軸垂直落差被急遽拉大，這段落差就是 DIBL 吃掉的 Vth。*","type":"units"},{"title":"白話物理意義","content":"汲極電壓 ($V_{DS}$) 升高時，強大的電場直接穿透了過短的通道，把源極用來阻擋電子的「位能障壁」給生生拉低了；這不僅導致關斷時漏電流暴增，也讓導通時的電流太容易受 $V_{DS}$ 牽連，使得輸出阻抗 $R_o$ 嚴重退化。","type":"plain"},{"title":"生活化比喻","content":"把電晶體想像成一座水壩（Gate 負責控制水壩高度 $V_{th}$），Source 是上游水庫，Drain 是下游的瀑布。\r\n- **在 180nm（長通道）時**：瀑布離水壩很遠，下游瀑布水流再急、高低落差再大（高 $V_{DS}$），也不會影響水壩上游的平靜。\r\n- **在 55nm（短通道）時**：瀑布逼近到了水壩腳下！當瀑布水量全開（高 $V_{DS}$ 飽和區）時，產生了投影片上說的**「恐怖吸力」**，直接把水壩邊緣的水位往下拉。結果就是：即使水壩閘門沒開，水還是會被吸過去漏出來（漏電流）；而且水流大小會被瀑布的吸力牽著走，不再完全受閘門控制（$R_o$ 爛掉）。","type":"analogy"},{"title":"面試必考點","items":[{"question":"在 55nm 甚至更先進製程中，為什麼難以用單顆短通道電晶體實現 High Gain？","answer":"- **答案**：因為短通道的 DIBL 效應會讓 $V_{th}$ 隨 $V_{DS}$ 降低，等效上急遽增加了輸出電導 $g_{ds}$（$g_{ds} \\approx \\eta \\cdot g_m$）。本質增益 $g_m R_o \\approx 1/\\eta$，由於 DIBL 係數 $\\eta$ 在短通道很大，導致本質增益被嚴重限制。"},{"question":"在看 Vth vs. Length 的 Foundry 模型圖表時，如何快速評估 DIBL 的嚴重程度？","answer":"- **答案**：看同一長度 (L) 下，線性區（Low $V_{DS}$，瀑布沒水）與飽和區（High $V_{DS}$，瀑布全開）的 **$V_{th}$ 垂直落差**。落差越大（如圖中 W=2um L=54nm 落差達 102mV），代表 $\\Delta V_{th} / \\Delta V_{DS}$ 越大，DIBL 越嚴重；反觀 L=180nm 落差僅 22mV。"},{"question":"在高速 SerDes 中，TIA 輸入級必須用 min. L 降低寄生電容來衝刺頻寬，但這會面臨嚴重的 DIBL 導致 Gain 不足，該如何解決？","answer":"- **答案**：採用 **Cascode 架構**。利用 Common-Gate 電晶體屏蔽輸出端的電壓擺動，把輸入級電晶體的 Drain 電壓緊緊 Clamp 住。這樣輸入級的 $V_{DS}$ 就不會隨信號大幅變動，從而消除 DIBL 對輸入級 Vth 與 Ro 的動態影響，成功救回增益。"}],"type":"quiz"},{"content":"\u003e **短洞 DIBL 瀑布吸，Vth 掉 Ro 低，Cascode 屏蔽救增益！**","type":"mnemonic"}],"imageUrl":"../images/IMG_2150-P1.jpg"};
 
 // ── Render ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -821,22 +823,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
   document.getElementById('note-title').textContent = NOTE_DATA.title;
   document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
-  // 支援單張 imageUrl 或多張 imageUrls
-  const urls = NOTE_DATA.imageUrls || (NOTE_DATA.imageUrl ? [NOTE_DATA.imageUrl] : []);
-  document.getElementById('note-src').textContent = '原始圖片：' + urls.join(', ');
+  document.getElementById('note-src').textContent = '原始圖片：' + NOTE_DATA.imageUrl;
 
-  const imgWrap = document.getElementById('img-wrap');
-  urls.forEach((url, idx) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'image-wrap';
-    wrap.style.pageBreakAfter = idx < urls.length - 1 ? 'always' : 'auto';
-    const img = document.createElement('img');
-    img.className = 'note-img';
-    img.src = url;
-    img.alt = '筆記原圖 ' + (idx + 1);
-    wrap.appendChild(img);
-    imgWrap.appendChild(wrap);
-  });
+  const img = document.getElementById('note-img');
+  img.src = NOTE_DATA.imageUrl;
 
   const container = document.getElementById('sections-container');
   const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };

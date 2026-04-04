@@ -9,6 +9,23 @@
 | `.\process_note.ps1 -All -Force` | 批次強制重跑全部（覆蓋已存在） |
 | `.\process_note.ps1 -Private` | 批次跑 images\private\ 全部（自動 Local 模式） |
 | `.\process_note.ps1 IMG.jpg -Local` | 單張私密（只存本機，不上傳任何地方） |
+| `.\process_note.ps1 -All -Preview` | 批次跑，每張完成後自動開瀏覽器 |
+| `.\process_note.ps1 A.jpg,B.jpg -Name "主題名稱"` | 多張合併 → 一份 MD + HTML，PDF 每頁一張圖 |
+
+### 多張合併模式（-Name）
+
+適用情境：同一主題拍了多張，內容連貫但單張放不下。
+
+```powershell
+.\process_note.ps1 IMG_2190.jpg,IMG_2191.jpg -Name "55nm-Vth-vs-Length"
+```
+
+- Gemini **同時看所有圖**，產出一份完整 MD
+- HTML 圖片**上下堆疊**顯示
+- 轉 PDF 時**每張圖獨立一頁**（清晰度完整，供 NotebookLM OCR）
+- 圖片自動 rename：`55nm-Vth-vs-Length-1.jpg`、`55nm-Vth-vs-Length-2.jpg`...
+- 可搭配 `-Local`：`.\process_note.ps1 A.jpg,B.jpg -Name "主題" -Local`
+- 私密多張合併：`.\process_note.ps1 private\A.jpg,private\B.jpg -Name "主題" -Local`
 
 ### Flags 規格
 
@@ -18,13 +35,8 @@
 | `-Private` | 掃 `images\private\`，自動套用 `-Local` |
 | `-Force` | 強制重新處理，覆蓋已存在的 MD / HTML |
 | `-Local` | 跳過 Google Drive、Notion、GitHub push，只存本機 |
-
-### -Local 模式跳過項目
-
-- Google Drive 同步
-- Notion 上傳
-- GitHub push
-- 仍會產生：MD、HTML、開啟瀏覽器預覽、更新 index.html
+| `-Preview` | 每張處理完自動開瀏覽器預覽（預設不開） |
+| `-Name` | 手動指定 NoteName，多張合併時必填 |
 
 ## 補充工具
 

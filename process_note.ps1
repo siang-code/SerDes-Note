@@ -10,11 +10,15 @@
 # ========================================
 param(
     [string[]]$ImageFiles,
+    [string]$Name = "",
     [switch]$All,
     [switch]$Private,
     [switch]$Force,
-    [switch]$Local
+    [switch]$Local,
+    [switch]$Preview
 )
+
+$startTime = Get-Date
 
 $ProjectRoot    = $PSScriptRoot
 $GDriveRoot     = "G:\我的雲端硬碟\SerDes筆記"
@@ -43,6 +47,126 @@ if ($Private) {
 } elseif (-not $ImageFiles) {
     Write-Error "請指定圖片檔名，或使用 -All / -Private 處理全部"
     exit 1
+}
+
+# ── 多張合併模式（-Name 指定時）────────────────────────────
+if ($Name -and $ImageFiles.Count -gt 1) {
+    Write-Host "`n════════════════════════════════════" -ForegroundColor DarkGray
+    Write-Host " 合併模式：$($ImageFiles.Count) 張 → $Name" -ForegroundColor White
+    Write-Host "════════════════════════════════════" -ForegroundColor DarkGray
+
+    $NoteName   = $Name
+    $OutputPath = Join-Path $ProjectRoot "notes\$NoteName.md"
+    $HtmlPath   = Join-Path $ProjectRoot "notes\$NoteName.html"
+    $utf8       = New-Object System.Text.UTF8Encoding $false
+
+    # 驗證所有圖片存在，收集路徑與 rename
+    $ImagePaths  = @()
+    $ImageUrls   = @()
+    $allExist    = $true
+    foreach ($ImageFile in $ImageFiles) {
+        $src = Join-Path $ProjectRoot "images\$ImageFile"
+        if (-not (Test-Path $src)) {
+            Write-Warning "找不到圖片：$ImageFile"
+            $allExist = $false
+        } else {
+            $ImagePaths += $src
+            $ImageUrls  += "../images/$ImageFile"
+        }
+    }
+    if (-not $allExist) { exit 1 }
+
+    # Rename 圖片 → images\private\done\
+    $DoneDir = Join-Path $ProjectRoot "images\private\done"
+    New-Item -ItemType Directory -Path $DoneDir -Force | Out-Null
+    $RenamedPaths = @()
+    $RenamedUrls  = @()
+    for ($i = 0; $i -lt $ImagePaths.Count; $i++) {
+        $suffix  = if ($ImagePaths.Count -gt 1) { "-$($i+1)" } else { "" }
+        $newName = "$NoteName$suffix.jpg"
+        $newPath = Join-Path $DoneDir $newName
+        if ($ImagePaths[$i] -ne $newPath) {
+            Move-Item $ImagePaths[$i] $newPath -Force
+            Write-Host "  Rename: private\done\$newName" -ForegroundColor Green
+        }
+        $RenamedPaths += $newPath
+        $RenamedUrls  += "../images/private/done/$newName"
+    }
+
+    # 送 Gemini（prompt 文字 + 所有 @path 串成一行）
+    Write-Host "[2/4] Gemini 合併分析中..." -ForegroundColor Cyan
+    $Prompt     = Get-Content $PromptPath -Raw -Encoding UTF8
+    $ImgRefs    = ($RenamedPaths | ForEach-Object { "@$_" }) -join " "
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $Result   = & gemini -p "$Prompt $ImgRefs" 2>$null | Out-String
+
+    $ImgHeader = ($RenamedUrls | ForEach-Object { "> 原始圖片：$_" }) -join "`n"
+    $Header    = "# $NoteName`n`n> 分析日期：$(Get-Date -Format 'yyyy-MM-dd')`n$ImgHeader`n`n---`n`n"
+    [System.IO.File]::WriteAllText($OutputPath, ($Header + $Result), $utf8)
+    Write-Host "  MD 筆記：notes\$NoteName.md" -ForegroundColor Green
+
+    # 生成 HTML（imageUrls 為陣列）
+    Write-Host "[2.5/4] 生成 HTML..." -ForegroundColor Cyan
+    $mdContent  = [System.IO.File]::ReadAllText($OutputPath, [System.Text.Encoding]::UTF8)
+
+    function Get-Section($text, $heading) {
+        $m = [regex]::Match($text, "### $heading\s*\r?\n([\s\S]*?)(?=\r?\n### |\r?\n## |\*\*記憶|\z)")
+        if ($m.Success) { return $m.Groups[1].Value.Trim() } else { return "" }
+    }
+    function Get-QuizItems($text) {
+        $items = [System.Collections.Generic.List[hashtable]]::new()
+        $blocks = [regex]::Matches($text, '(?ms)^\d+\.\s+\*\*(.+?)\*\*\s*\r?\n([\s\S]*?)(?=^\d+\.|\*\*記憶|\z)')
+        foreach ($b in $blocks) {
+            $q = $b.Groups[1].Value -replace '^問題[：:]?\s*', ''
+            $aMatch = [regex]::Match($b.Groups[2].Value, '答案[：:]\s*([\s\S]+)')
+            $a = if ($aMatch.Success) { $aMatch.Groups[1].Value.Trim() -replace '\*\*$','' } else { $b.Groups[2].Value.Trim() }
+            $items.Add(@{ question = $q.Trim(); answer = $a.Trim() })
+        }
+        return $items
+    }
+
+    $h2Match    = [regex]::Match($mdContent, '## (.+)')
+    $intro      = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
+    $mathSec    = Get-Section $mdContent "數學推導"
+    $unitsSec   = Get-Section $mdContent "單位解析"
+    $plainSec   = Get-Section $mdContent "白話物理意義"
+    $analogySec = Get-Section $mdContent "生活化比喻"
+    $quizText   = Get-Section $mdContent "面試必考點"
+    $quizItems  = Get-QuizItems $quizText
+    $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=\r?\n---|\z)')
+    $mnemonic   = if ($mnMatch.Success) { $mnMatch.Groups[1].Value.Trim() } else { "" }
+    $qaItems    = [System.Collections.Generic.List[hashtable]]::new()
+    $qaMatches  = [regex]::Matches($mdContent, '(?ms)#### Q：(.+?)\r?\n([\s\S]*?)(?=#### Q：|\z)')
+    foreach ($m in $qaMatches) {
+        $qaItems.Add(@{ question = $m.Groups[1].Value.Trim(); answer = $m.Groups[2].Value.Trim() })
+    }
+    $sections = @(
+        @{ type="intro";    content=$intro }
+        @{ type="math";     title="數學推導";     content=$mathSec }
+        @{ type="units";    title="單位解析";     content=$unitsSec }
+        @{ type="plain";    title="白話物理意義"; content=$plainSec }
+        @{ type="analogy";  title="生活化比喻";   content=$analogySec }
+        @{ type="quiz";     title="面試必考點";   items=@($quizItems) }
+        @{ type="mnemonic"; content=$mnemonic }
+    )
+    if ($qaItems.Count -gt 0) {
+        $sections += @{ type="qa"; title="問題延伸"; items=@($qaItems) }
+    }
+    $noteData = @{
+        title     = $NoteName
+        date      = (Get-Date -Format 'yyyy-MM-dd')
+        imageUrls = $RenamedUrls   # 多張陣列
+        sections  = $sections
+    }
+    $noteDataJson    = $noteData | ConvertTo-Json -Depth 8 -Compress
+    $templateContent = [System.IO.File]::ReadAllText($TemplatePath, [System.Text.Encoding]::UTF8)
+    $htmlContent     = $templateContent -replace '/\*INJECT_NOTE_DATA\*/', "const NOTE_DATA = $noteDataJson;"
+    [System.IO.File]::WriteAllText($HtmlPath, $htmlContent, $utf8)
+    Write-Host "  HTML：notes\$NoteName.html" -ForegroundColor Green
+
+    if ($Preview) { Start-Process $HtmlPath }
+    exit 0
 }
 
 $total   = $ImageFiles.Count
@@ -80,11 +204,10 @@ foreach ($ImageFile in $ImageFiles) {
         Write-Host "[1/4] 識別筆記標題..." -ForegroundColor Yellow
         $TitlePrompt = "請只回答這張筆記右上角的標題文字，不要加任何其他說明。格式範例：PLL-L1-P1"
         $RawTitle = & gemini -p "$TitlePrompt @$ImagePath" 2>$null | Out-String
-        $titleLines = ($RawTitle -split "`n").Trim() | Where-Object {
-            $_ -match '^[A-Z]{2,10}-L\d+-P\d+$'
-        }
-        $NoteName = if ($titleLines) {
-            ($titleLines | Select-Object -Last 1) -replace '[\\/:*?"<>|]', '-'
+        Write-Host "  [DEBUG] Gemini raw: $($RawTitle.Trim())" -ForegroundColor Magenta
+        $titleMatch = [regex]::Match($RawTitle, '[A-Z]{2,10}-L\d+-P\d+')
+        $NoteName = if ($titleMatch.Success) {
+            $titleMatch.Value -replace '[\\/:*?"<>|]', '-'
         } else { "" }
     }
 
@@ -202,7 +325,7 @@ foreach ($ImageFile in $ImageFiles) {
     # ── Step 4：上傳 Notion ──────────────────────────────────
     if ($Local) {
         Write-Host "[4/4] 略過 Notion（Local 模式）" -ForegroundColor DarkGray
-        Start-Process $HtmlPath
+        if ($Preview) { Start-Process $HtmlPath }
         $done++
         continue
     }
@@ -310,7 +433,10 @@ if ($done -gt 0 -and -not $Local) {
 }
 
 # ── 最終摘要 ────────────────────────────────────────────────
+$elapsed = (Get-Date) - $startTime
+$elapsedStr = "{0:mm}m {0:ss}s" -f $elapsed
 Write-Host "`n════════════════════════════════════" -ForegroundColor White
 Write-Host " 全部完成！" -ForegroundColor Green
 Write-Host "  處理：$done　跳過：$skipped　失敗：$failed　共：$total" -ForegroundColor Cyan
+Write-Host "  耗時：$elapsedStr" -ForegroundColor Cyan
 Write-Host "════════════════════════════════════`n" -ForegroundColor White

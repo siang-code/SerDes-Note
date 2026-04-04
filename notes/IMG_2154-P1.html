@@ -745,7 +745,9 @@ body::after {
     </div>
   </div>
 
-  <div id="img-wrap"></div>
+  <div class="image-wrap" id="img-wrap">
+    <img class="note-img" id="note-img" src="" alt="筆記原圖">
+  </div>
 
   <div id="sections-container"></div>
 
@@ -813,7 +815,7 @@ body::after {
 
 <script>
 // ── NOTE_DATA injected by process_note.ps1 ──
-/*INJECT_NOTE_DATA*/
+const NOTE_DATA = {"date":"2026-04-04","title":"IMG_2154-P1","sections":[{"content":"[Vth vs. Length \u0026 Inverse Narrow Width Effect (INWE)]","type":"intro"},{"title":"數學推導","content":"在先進製程中，臨界電壓 $V_{th}$ 不再是常數，而是受到通道長度 $L$ 與寬度 $W$ 的強烈影響。\r\n\r\n一般大尺寸 MOSFET 的 $V_{th}$ 基本公式為：\r\n$V_{th0} = V_{FB} + 2\\Phi_F + \\frac{Q_{dep}}{C_{ox}}$\r\n\r\n考慮尺寸縮減效應後，有效臨界電壓可表示為：\r\n$V_{th, eff} = V_{th0} + \\Delta V_{th}(L) + \\Delta V_{th}(W)$\r\n\r\n針對投影片中提到的 **INWE (Inverse Narrow Width Effect，逆窄通道效應)**，推導如下：\r\n1. **邊緣電容效應增加**：在 STI (Shallow Trench Isolation) 製程中，Gate 會稍微包覆住 STI 氧化層的邊緣。\r\n2. **等效氧化層電容變大**：這導致在通道邊緣存在額外的邊緣電場 (Fringe Field)，使得通道邊緣的等效氧化層電容 $C_{ox,edge}$ 大於中央區域的 $C_{ox}$。\r\n3. **推導變形**：\r\n   邊緣區域需要克服的耗盡層電荷造成的電壓降為 $\\frac{Q_{dep}}{C_{ox,edge}}$。\r\n   因為 $C_{ox,edge} \u003e C_{ox}$，所以 $\\frac{Q_{dep}}{C_{ox,edge}} \u003c \\frac{Q_{dep}}{C_{ox}}$。\r\n4. **結論**：通道邊緣比中央更容易形成反轉層（提早導通）。當 $W$ 變小，邊緣區域佔整體通道的比例增加，導致整顆元件的有效 $V_{th}$ 呈現**下降**趨勢。\r\n   $\\Delta V_{th}(W) \\propto -\\frac{1}{W}$ （即 $W$ 越小，扣除的 $V_{th}$ 越多）。","type":"math"},{"title":"單位解析","content":"**公式單位消去：**\r\n針對 $V_{th}$ 公式中的耗盡層壓降項 $\\frac{Q_{dep}}{C_{ox}}$：\r\n- $Q_{dep}$（單位面積耗盡層電荷）：$[Coulomb / cm^2]$ 或 $[C \\cdot cm^{-2}]$\r\n- $C_{ox}$（單位面積氧化層電容）：$[Farad / cm^2]$ 或 $[F \\cdot cm^{-2}]$\r\n- 根據電容定義 $C = \\frac{Q}{V} \\Rightarrow F = \\frac{C}{V}$\r\n- $\\frac{Q_{dep}}{C_{ox}}$ 的單位 = $\\frac{[C \\cdot cm^{-2}]}{[F \\cdot cm^{-2}]} = \\frac{C}{F} = \\frac{C}{C/V} = [V]$ (伏特)\r\n\r\n**圖表單位推斷：**\r\n📈 圖表單位推斷（基於右側HSPICE模擬結果圖）：\r\n- **X 軸**：通道長度 $L$ (Length) $[nm]$ 或 $[\\mu m]$，典型範圍從圖底部的 $54nm$ 到 $1\\mu m$ 以上。\r\n- **Y 軸**：臨界電壓 $V_{th}$ $[V]$ 或 $[mV]$，典型範圍在表格中顯示約為 $150mV \\sim 600mV$ (例如圖表數字標示 $401.9m$ 即為 $401.9mV$)。","type":"units"},{"title":"白話物理意義","content":"在 STI 隔離製程下，閘極的電場會從旁邊的溝槽邊緣「漏」進去幫忙吸電子（Fringe Field），讓邊緣提早導通；所以電晶體越窄（邊緣比例越高），它就越容易被打開（Vth 下降）。","type":"plain"},{"title":"生活化比喻","content":"想像你在烤一塊**極窄的長條牛排（窄通道電晶體，小 W）**。\r\n火源（Gate 控制電場）不僅從正上方加熱，熱能還會從牛排的「左右兩側邊緣」滲透進去（這就是 Fringe Field）。因為牛排很窄，邊緣受熱的比例非常高，所以這塊窄牛排比起寬牛排**更快被烤熟（提早導通，Vth 變低）**。","type":"analogy"},{"title":"面試必考點","items":[{"question":"在 55nm (含 STI) 以下製程，當電晶體 Width (W) 變小，Vth 會怎麼變化？為什麼？","answer":"Vth 會下降，稱為 INWE (Inverse Narrow Width Effect)。因為 STI 邊緣會產生 Fringe Field (邊緣電場) 耦合，使邊緣提早形成反轉層。窄管子的邊緣效應佔比高，故整體等效 Vth 降低。"},{"question":"什麼是 LOD (Length of Diffusion) / OSE (OD Space Effect)？它和 INWE 衝突時誰主導？","answer":"LOD 是因為 STI 填入氧化物冷卻後產生的「機械應力」影響了載子遷移率 (Mobility) 與 Vth。雖然機械應力有時會使 Vth 微幅上升，但在多數先進製程中，Fringe Field 造成的 INWE 電場效應仍是主導因素，最終窄管子 Vth 依然較低。"},{"question":"觀察投影片右側圖表，當 Length (L) 從 1um 縮小到 100nm 時，Vth 曲線為何呈現先上升？","answer":"這是 RSCE (Reverse Short Channel Effect，逆短通道效應)。製程中為了抑制漏電會打 Halo implant (Pocket implant)，當 L 縮短時，左右兩邊的高濃度 Halo 區域互相靠近甚至重疊，使通道平均摻雜濃度上升，導致 Vth 在短通道時反而先升高，直到 L 更短時才因為 SCE (短通道效應/DIBL) 狂降。"}],"type":"quiz"},{"content":"「**窄管邊緣先著火 (INWE，W小 Vth下)，短管光暈濃度高 (RSCE，L小 Vth上)。**」","type":"mnemonic"}],"imageUrl":"../images/IMG_2154-P1.jpg"};
 
 // ── Render ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -821,22 +823,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
   document.getElementById('note-title').textContent = NOTE_DATA.title;
   document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
-  // 支援單張 imageUrl 或多張 imageUrls
-  const urls = NOTE_DATA.imageUrls || (NOTE_DATA.imageUrl ? [NOTE_DATA.imageUrl] : []);
-  document.getElementById('note-src').textContent = '原始圖片：' + urls.join(', ');
+  document.getElementById('note-src').textContent = '原始圖片：' + NOTE_DATA.imageUrl;
 
-  const imgWrap = document.getElementById('img-wrap');
-  urls.forEach((url, idx) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'image-wrap';
-    wrap.style.pageBreakAfter = idx < urls.length - 1 ? 'always' : 'auto';
-    const img = document.createElement('img');
-    img.className = 'note-img';
-    img.src = url;
-    img.alt = '筆記原圖 ' + (idx + 1);
-    wrap.appendChild(img);
-    imgWrap.appendChild(wrap);
-  });
+  const img = document.getElementById('note-img');
+  img.src = NOTE_DATA.imageUrl;
 
   const container = document.getElementById('sections-container');
   const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };
