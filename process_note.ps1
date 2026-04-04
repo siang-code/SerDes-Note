@@ -28,6 +28,7 @@ $envFile = Join-Path $PSScriptRoot ".env"
 Get-Content $envFile | ForEach-Object { if ($_ -match '^(\w+)=(.+)$') { Set-Variable $matches[1] $matches[2] } }
 $NotionToken    = $NOTION_TOKEN
 $NotionParentId = $NOTION_PARENT_ID
+if ($GEMINI_API_KEY) { $env:GEMINI_API_KEY = $GEMINI_API_KEY }
 
 $NotionHeaders = @{
     "Authorization"  = "Bearer $NotionToken"
@@ -239,7 +240,7 @@ foreach ($ImageFile in $ImageFiles) {
     $Prompt = Get-Content $PromptPath -Raw -Encoding UTF8
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     Start-Sleep -Seconds 5
-    $Result = & gemini -p "$Prompt @$NewImagePath" 2>&1 | Out-String
+    $Result = & gemini -p "$Prompt @$NewImagePath" 2>$null | Out-String
 
     if ($Result.Trim().Length -lt 50) {
         Write-Host "  Gemini 回傳內容太短，跳過（可能 rate limit）" -ForegroundColor Red
@@ -269,7 +270,7 @@ foreach ($ImageFile in $ImageFiles) {
     # 移除第一行的 TITLE: 行
     $Result = ($Result -split "`n" | Select-Object -Skip 1) -join "`n"
 
-    $Header = "# $NoteName`n`n> 分析日期：$(Get-Date -Format 'yyyy-MM-dd')`n> 原始圖片：images/$NoteName.jpg`n`n---`n`n"
+    $Header = "# $NoteName`n`n> 分析日期：$(Get-Date -Format 'yyyy-MM-dd')`n> 原始圖片：images/done/$NoteName.jpg`n`n---`n`n"
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($OutputPath, ($Header + $Result), $utf8)
     Write-Host "  MD 筆記已存：notes\$NoteName.md" -ForegroundColor Green
@@ -329,7 +330,7 @@ foreach ($ImageFile in $ImageFiles) {
     $noteData = @{
         title    = $NoteName
         date     = (Get-Date -Format 'yyyy-MM-dd')
-        imageUrl = "../images/$NoteName.jpg"
+        imageUrl = "../images/done/$NoteName.jpg"
         sections = $sections
     }
     $noteDataJson    = $noteData | ConvertTo-Json -Depth 8 -Compress
@@ -337,6 +338,14 @@ foreach ($ImageFile in $ImageFiles) {
     $htmlContent     = $templateContent -replace '/\*INJECT_NOTE_DATA\*/', "const NOTE_DATA = $noteDataJson;"
     [System.IO.File]::WriteAllText($HtmlPath, $htmlContent, $utf8)
     Write-Host "  互動 HTML：notes\$NoteName.html" -ForegroundColor Green
+
+    # ── 移動圖片到 done\ ────────────────────────────────────
+    $DoneDir = Join-Path $ProjectRoot "images\done"
+    New-Item -ItemType Directory -Path $DoneDir -Force | Out-Null
+    $DonePath = Join-Path $DoneDir "$NoteName.jpg"
+    Move-Item $NewImagePath $DonePath -Force
+    $NewImagePath = $DonePath
+    Write-Host "  圖片移至：images\done\$NoteName.jpg" -ForegroundColor DarkGray
 
     # ── Step 3：同步到 Google Drive ─────────────────────────
     if ($Local) {
