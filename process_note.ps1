@@ -450,7 +450,7 @@ foreach ($ImageFile in $ImageFiles) {
         Write-Host "  Notion 頁面：$($pageResp.url)" -ForegroundColor Green
     }
 
-    Start-Process $HtmlPath
+    if ($Preview) { Start-Process $HtmlPath }
     $done++
 }
 
