@@ -1,12 +1,30 @@
 # SerDes 筆記自動化指令速查
 
-## 主流程
+## 主流程 process_note.ps1
 
 | 指令 | 說明 |
 |------|------|
-| `.\process_note.ps1 L1.jpg` | 單張圖片 → MD + HTML + Notion + Google Drive |
-| `.\process_note.ps1 -All` | 批次跑所有圖片（跳過已處理） |
-| `.\process_note.ps1 -Force L1.jpg` | 強制重跑（覆蓋已存在的筆記） |
+| `.\process_note.ps1 L1.jpg` | 單張 → MD + HTML + Notion + Google Drive + GitHub |
+| `.\process_note.ps1 -All` | 批次跑 images\ 全部（跳過已處理） |
+| `.\process_note.ps1 -All -Force` | 批次強制重跑全部（覆蓋已存在） |
+| `.\process_note.ps1 -Private` | 批次跑 images\private\ 全部（自動 Local 模式） |
+| `.\process_note.ps1 IMG.jpg -Local` | 單張私密（只存本機，不上傳任何地方） |
+
+### Flags 規格
+
+| Flag | 說明 |
+|------|------|
+| `-All` | 掃 `images\`，不含 `images\private\` |
+| `-Private` | 掃 `images\private\`，自動套用 `-Local` |
+| `-Force` | 強制重新處理，覆蓋已存在的 MD / HTML |
+| `-Local` | 跳過 Google Drive、Notion、GitHub push，只存本機 |
+
+### -Local 模式跳過項目
+
+- Google Drive 同步
+- Notion 上傳
+- GitHub push
+- 仍會產生：MD、HTML、開啟瀏覽器預覽、更新 index.html
 
 ## 補充工具
 
@@ -22,7 +40,8 @@
 
 | 類型 | 路徑 |
 |------|------|
-| 原始圖片 | `images\` |
+| 一般圖片 | `images\` |
+| 私密圖片 | `images\private\` |
 | Markdown | `notes\*.md` |
 | HTML 筆記 | `notes\*.html` |
 | 首頁 | `index.html` |
@@ -32,8 +51,11 @@
 ## 命名規則
 
 ```
-{科目}-L{堂}-P{頁}.jpg
+課程筆記：{科目}-L{堂}-P{頁}.jpg
 例：PLL-L1-P1、TIA-L3-P2、EQ-L2-P1
+
+自製投影片：{主題}-P{流水號}.jpg（Gemini 自動命名）
+例：55nm-Vth-vs-Length-P1
 ```
 
 ## NotebookLM 匯入

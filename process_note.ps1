@@ -5,11 +5,15 @@
 #   .\process_note.ps1 L1.jpg,L2.jpg       # 多張
 #   .\process_note.ps1 -All                # images\ 全部未處理的
 #   .\process_note.ps1 -All -Force         # 強制重新處理全部
+#   .\process_note.ps1 private\IMG.jpg -Local  # 私密筆記（不上傳）
+#   .\process_note.ps1 -Private            # images\private\ 全部
 # ========================================
 param(
     [string[]]$ImageFiles,
     [switch]$All,
-    [switch]$Force
+    [switch]$Private,
+    [switch]$Force,
+    [switch]$Local
 )
 
 $ProjectRoot    = $PSScriptRoot
@@ -28,11 +32,16 @@ $NotionHeaders = @{
 }
 
 # ── 決定要處理哪些圖片 ──────────────────────────────────────
-if ($All) {
-    $ImageFiles = Get-ChildItem -Path (Join-Path $ProjectRoot "images") -Include "*.jpg","*.jpeg","*.JPG","*.JPEG","*.png","*.PNG" -File |
+if ($Private) {
+    $Local = $true
+    $ImageFiles = Get-ChildItem -Path (Join-Path $ProjectRoot "images\private\*") -Include "*.jpg","*.jpeg","*.JPG","*.JPEG","*.png","*.PNG" -File |
+        ForEach-Object { "private\$($_.Name)" }
+} elseif ($All) {
+    $ImageFiles = Get-ChildItem -Path (Join-Path $ProjectRoot "images") -File |
+        Where-Object { $_.Extension -match '^\.(jpg|jpeg|png)$' -and $_.DirectoryName -notmatch '\\private$' } |
         Select-Object -ExpandProperty Name
 } elseif (-not $ImageFiles) {
-    Write-Error "請指定圖片檔名，或使用 -All 處理全部"
+    Write-Error "請指定圖片檔名，或使用 -All / -Private 處理全部"
     exit 1
 }
 
@@ -54,31 +63,47 @@ foreach ($ImageFile in $ImageFiles) {
     Write-Host " 處理：$ImageFile" -ForegroundColor White
     Write-Host "════════════════════════════════════" -ForegroundColor DarkGray
 
-    # ── Step 1：識別標題 ────────────────────────────────────
-    Write-Host "[1/4] 識別筆記標題..." -ForegroundColor Yellow
-    $TitlePrompt = "請只回答這張筆記右上角的標題文字，不要加任何其他說明。格式範例：PLL-L1-P1"
-    $RawTitle = & gemini -p "$TitlePrompt @$ImagePath" 2>$null | Out-String
-    $titleLines = ($RawTitle -split "`n").Trim() | Where-Object {
-        $_ -match '^[A-Z]{2,10}-L\d+-P\d+$'
+    # ── 快速跳過：檔名對應的 MD 已存在就不跑任何 Gemini ───────
+    $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($ImageFile)
+    $OutputPath = Join-Path $ProjectRoot "notes\$BaseName.md"
+    if ((Test-Path $OutputPath) -and -not $Force) {
+        Write-Host "  ⏭  已存在 notes\$BaseName.md，跳過" -ForegroundColor DarkGray
+        $skipped++
+        continue
     }
-    $NoteName = if ($titleLines) {
-        ($titleLines | Select-Object -Last 1) -replace '[\\/:*?"<>|]', '-'
-    } else { "" }
+
+    # ── Step 1：識別標題 ────────────────────────────────────
+    if ($BaseName -match '^[A-Z]{2,10}-L\d+-P\d+$') {
+        $NoteName = $BaseName
+        Write-Host "[1/4] 檔名已符合格式，跳過 Gemini：$NoteName" -ForegroundColor DarkGray
+    } else {
+        Write-Host "[1/4] 識別筆記標題..." -ForegroundColor Yellow
+        $TitlePrompt = "請只回答這張筆記右上角的標題文字，不要加任何其他說明。格式範例：PLL-L1-P1"
+        $RawTitle = & gemini -p "$TitlePrompt @$ImagePath" 2>$null | Out-String
+        $titleLines = ($RawTitle -split "`n").Trim() | Where-Object {
+            $_ -match '^[A-Z]{2,10}-L\d+-P\d+$'
+        }
+        $NoteName = if ($titleLines) {
+            ($titleLines | Select-Object -Last 1) -replace '[\\/:*?"<>|]', '-'
+        } else { "" }
+    }
 
     if (-not $NoteName) {
-        $NoteName = [System.IO.Path]::GetFileNameWithoutExtension($ImageFile)
+        $NoteName = $BaseName
         Write-Host "  無法識別標題，使用原始檔名：$NoteName" -ForegroundColor DarkYellow
     } else {
         Write-Host "  識別標題：$NoteName" -ForegroundColor Green
     }
 
-    # ── 已處理過？跳過 ──────────────────────────────────────
-    $OutputPath = Join-Path $ProjectRoot "notes\$NoteName.md"
-    if ((Test-Path $OutputPath) -and -not $Force) {
-        Write-Host "  ⏭  已存在 notes\$NoteName.md，跳過（用 -Force 強制重跑）" -ForegroundColor DarkYellow
-        $skipped++
-        continue
+    # ── 流水號：同前綴已存在則補 -P2, -P3... ───────────────
+    if (-not ($NoteName -match '-P\d+$')) {
+        $existing = Get-ChildItem -Path (Join-Path $ProjectRoot "notes") -Filter "$NoteName-P*.md" -File
+        $nextNum  = $existing.Count + 1
+        $NoteName = "$NoteName-P$nextNum"
+        Write-Host "  自動編號：$NoteName" -ForegroundColor DarkCyan
     }
+
+    $OutputPath = Join-Path $ProjectRoot "notes\$NoteName.md"
 
     # ── Step 2：重新命名圖片 & Gemini 分析 ─────────────────
     $NewImagePath = Join-Path $ProjectRoot "images\$NoteName.jpg"
@@ -162,15 +187,25 @@ foreach ($ImageFile in $ImageFiles) {
     Write-Host "  互動 HTML：notes\$NoteName.html" -ForegroundColor Green
 
     # ── Step 3：同步到 Google Drive ─────────────────────────
-    Write-Host "[3/4] 同步到 Google Drive..." -ForegroundColor Magenta
-    New-Item -ItemType Directory -Path (Join-Path $GDriveRoot "images") -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $GDriveRoot "notes")  -Force | Out-Null
-    Copy-Item $NewImagePath (Join-Path $GDriveRoot "images\$NoteName.jpg") -Force
-    Copy-Item $OutputPath   (Join-Path $GDriveRoot "notes\$NoteName.md")   -Force
-    Copy-Item $HtmlPath     (Join-Path $GDriveRoot "notes\$NoteName.html") -Force
-    Write-Host "  已同步 Google Drive" -ForegroundColor Green
+    if ($Local) {
+        Write-Host "[3/4] 略過 Google Drive（Local 模式）" -ForegroundColor DarkGray
+    } else {
+        Write-Host "[3/4] 同步到 Google Drive..." -ForegroundColor Magenta
+        New-Item -ItemType Directory -Path (Join-Path $GDriveRoot "images") -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $GDriveRoot "notes")  -Force | Out-Null
+        Copy-Item $NewImagePath (Join-Path $GDriveRoot "images\$NoteName.jpg") -Force
+        Copy-Item $OutputPath   (Join-Path $GDriveRoot "notes\$NoteName.md")   -Force
+        Copy-Item $HtmlPath     (Join-Path $GDriveRoot "notes\$NoteName.html") -Force
+        Write-Host "  已同步 Google Drive" -ForegroundColor Green
+    }
 
     # ── Step 4：上傳 Notion ──────────────────────────────────
+    if ($Local) {
+        Write-Host "[4/4] 略過 Notion（Local 模式）" -ForegroundColor DarkGray
+        Start-Process $HtmlPath
+        $done++
+        continue
+    }
     Write-Host "[4/4] 上傳 Notion..." -ForegroundColor Blue
 
     # 取分類前綴（PLL-L1-P1 → PLL）
@@ -264,12 +299,14 @@ if ($done -gt 0) {
 }
 
 # ── 推上 GitHub ─────────────────────────────────────────────
-if ($done -gt 0) {
+if ($done -gt 0 -and -not $Local) {
     Write-Host "`n推上 GitHub..." -ForegroundColor Cyan
     git -C $ProjectRoot add .
     git -C $ProjectRoot commit -m "add notes $(Get-Date -Format 'yyyy-MM-dd')"
     git -C $ProjectRoot push
     Write-Host "  GitHub 已同步" -ForegroundColor Green
+} elseif ($Local) {
+    Write-Host "`nLocal 模式：不推 GitHub" -ForegroundColor DarkGray
 }
 
 # ── 最終摘要 ────────────────────────────────────────────────

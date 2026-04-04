@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">SerDes Note</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  --bg:        #121212;
+  --bg2:       #1a1a1a;
+  --grid:      rgba(0,255,60,0.03);
+  --phosphor:  #39e87a;
+  --phosphor2: #1fa84e;
+  --text:      #D1D5DB;
+  --amber:     #f5a623;
+  --dim:       #2a4a2a;
+  --border:    rgba(57,232,122,0.18);
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui:   'Rajdhani', sans-serif;
+  --scan-size: 3px;
+}
+
+/* Light theme */
+body.light {
+  --bg:        #FFFFFF;
+  --bg2:       #F9FAFB;
+  --grid:      rgba(0,0,0,0.04);
+  --text:      #111827;
+  --dim:       #9CA3AF;
+  --border:    #E5E7EB;
+  --phosphor:  #059669;
+  --phosphor2: #047857;
+  --amber:     #D97706;
+  --scan-size: 0px;
+}
+
+body.light .section.math .section-body,
+body.light .section.units .section-body,
+body.light .section.qa .section-body,
+body.light .card-a,
+body.light .qa-item-a,
+body.light .modal-answer,
+body.light .ai-feedback,
+body.light .section.units .chart-infer { color: #374151; }
+
+body.light .title,
+body.light .section.mnemonic .section-body { text-shadow: none; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* CRT scanlines */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--scan-size) - 1px),
+    rgba(0,0,0,0.08) var(--scan-size)
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--phosphor2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-ui);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--phosphor);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(57,232,122,0.4);
+}
+
+.date-line {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--phosphor2);
+  display: flex;
+  gap: 2rem;
+}
+
+/* ── Image viewer ── */
+.image-wrap {
+  position: relative;
+  margin-bottom: 2.5rem;
+  cursor: zoom-in;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.image-wrap::before {
+  content: '[ RAW_SCAN ]';
+  position: absolute;
+  top: 0.5rem; left: 0.7rem;
+  font-size: 0.65rem;
+  color: var(--phosphor2);
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+.image-wrap::after {
+  content: '⊕ ZOOM';
+  position: absolute;
+  bottom: 0.5rem; right: 0.7rem;
+  font-size: 0.65rem;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+.note-img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.92) contrast(1.1);
+  transition: filter 0.2s;
+}
+.image-wrap:hover .note-img { filter: brightness(1) contrast(1.15); }
+
+/* Lightbox */
+.lightbox {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 2000;
+  cursor: zoom-out;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox.open { display: flex; }
+.lightbox img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border: 1px solid var(--border);
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.section.visible { opacity: 1; transform: none; }
+
+.section-header {
+  background: var(--bg2);
+  padding: 0.55rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-icon {
+  font-size: 0.9rem;
+  color: var(--amber);
+}
+
+.section-title {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.section-body {
+  padding: 1.2rem 1.2rem;
+  line-height: 1.8;
+  font-size: 0.88rem;
+}
+
+/* intro special */
+.section.intro .section-body {
+  color: var(--phosphor);
+  border-left: 3px solid var(--amber);
+  font-size: 0.9rem;
+}
+
+/* math section */
+.section.math .section-body { color: #b8e8c8; }
+
+/* ── Unit analysis sub-section ── */
+.section.units {
+  margin-top: -1.2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(245,166,35,0.15);
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+  margin-left: 1.5rem;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.section.units.visible { opacity: 1; transform: none; }
+.section.units .section-header {
+  background: rgba(245,166,35,0.05);
+  border-bottom: 1px solid rgba(245,166,35,0.12);
+}
+.section.units .section-title {
+  font-size: 0.72rem;
+  color: var(--amber);
+  opacity: 0.85;
+}
+.section.units .section-body {
+  font-size: 0.82rem;
+  color: #c8d8c8;
+  line-height: 1.75;
+}
+.section.units .unit-block {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(245,166,35,0.1);
+  border-radius: 2px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--amber);
+  line-height: 1.7;
+}
+.section.units .chart-infer {
+  background: rgba(57,232,122,0.04);
+  border: 1px solid rgba(57,232,122,0.12);
+  border-radius: 2px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  font-size: 0.78rem;
+  color: #8be8aa;
+  line-height: 1.7;
+}
+
+/* ── Q&A append section ── */
+.section.qa .section-body {
+  color: #b8d8e8;
+}
+.qa-item {
+  margin-bottom: 1.2rem;
+  border-left: 2px solid var(--phosphor2);
+  padding-left: 0.9rem;
+}
+.qa-item-q {
+  font-weight: 600;
+  color: var(--phosphor);
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+}
+.qa-item-a {
+  font-size: 0.82rem;
+  color: #8be8aa;
+  line-height: 1.75;
+}
+
+.section-body ol {
+  padding-left: 1.4rem;
+}
+
+.section-body ol li, .section-body ul li {
+  margin-bottom: 0.5rem;
+}
+
+.section-body strong {
+  color: var(--phosphor);
+}
+
+/* ── Quiz flashcards ── */
+.quiz-list { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.card {
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--phosphor2); }
+.card.open  { border-color: var(--phosphor); }
+
+.card-q {
+  padding: 0.7rem 1rem;
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  font-size: 0.85rem;
+}
+
+.card-num {
+  color: var(--amber);
+  min-width: 1.5rem;
+  font-weight: bold;
+}
+
+.card-q-text { flex: 1; color: var(--phosphor); }
+
+.card-toggle {
+  color: var(--phosphor2);
+  font-size: 0.7rem;
+  min-width: 1.5rem;
+  text-align: right;
+  margin-top: 0.1rem;
+  transition: transform 0.25s;
+}
+.card.open .card-toggle { transform: rotate(90deg); color: var(--phosphor); }
+
+.card-a {
+  display: none;
+  padding: 0.7rem 1rem 0.9rem 3.3rem;
+  font-size: 0.83rem;
+  line-height: 1.75;
+  color: #8be8aa;
+  background: rgba(57,232,122,0.03);
+  border-top: 1px solid var(--dim);
+}
+.card.open .card-a { display: block; }
+
+/* ── Mnemonic ── */
+.section.mnemonic .section-body {
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 1.5rem;
+  text-shadow: 0 0 10px rgba(245,166,35,0.3);
+}
+
+/* ── Feynman FAB ── */
+.fab {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  z-index: 500;
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(245,166,35,0.15);
+}
+.fab:hover {
+  background: rgba(245,166,35,0.08);
+  box-shadow: 0 0 20px rgba(245,166,35,0.3);
+}
+
+/* ── Feynman Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 1500;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  border-radius: 2px;
+  padding: 2rem;
+  max-width: 620px;
+  width: 90%;
+  position: relative;
+}
+
+.modal-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.modal-question {
+  font-family: var(--font-ui);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--phosphor);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.modal-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  outline: none;
+  margin-bottom: 1.2rem;
+  caret-color: var(--phosphor);
+}
+.modal-input::placeholder { color: var(--dim); }
+
+.modal-actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+}
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 1rem;
+  border: 1px solid;
+  border-radius: 2px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s;
+}
+.btn-reveal { border-color: var(--phosphor2); color: var(--phosphor2); }
+.btn-reveal:hover { background: rgba(57,232,122,0.08); }
+.btn-next   { border-color: var(--amber); color: var(--amber); }
+.btn-next:hover { background: rgba(245,166,35,0.08); }
+.btn-close  { border-color: var(--dim); color: var(--dim); }
+.btn-close:hover { border-color: var(--phosphor2); color: var(--phosphor2); }
+
+.modal-answer {
+  display: none;
+  font-size: 0.82rem;
+  color: #8be8aa;
+  line-height: 1.75;
+  border-top: 1px solid var(--dim);
+  margin-top: 0.5rem;
+  padding-top: 0.8rem;
+}
+.modal-answer.show { display: block; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ── Theme / Settings buttons ── */
+.theme-btn, .settings-btn {
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  letter-spacing: 0.08em;
+}
+.theme-btn { margin-left: auto; }
+.theme-btn:hover, .settings-btn:hover { border-color: var(--phosphor2); color: var(--phosphor2); }
+.settings-btn.active { border-color: var(--phosphor); color: var(--phosphor); }
+
+/* ── Chat FAB ── */
+.chat-fab {
+  position: fixed;
+  bottom: 2rem; right: 10.5rem;
+  z-index: 500;
+  background: var(--bg2);
+  border: 1px solid var(--phosphor);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(57,232,122,0.15);
+}
+.chat-fab:hover {
+  background: rgba(57,232,122,0.08);
+  box-shadow: 0 0 20px rgba(57,232,122,0.3);
+}
+
+/* ── Chat Panel ── */
+.chat-panel {
+  position: fixed;
+  top: 0; right: -420px;
+  width: 400px;
+  height: 100vh;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease;
+}
+.chat-panel.open { right: 0; }
+
+.chat-panel-header {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.chat-panel-title {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--phosphor);
+  text-transform: uppercase;
+}
+.chat-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--phosphor2);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  padding: 0.2rem;
+}
+.chat-close-btn:hover { color: var(--phosphor); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.chat-empty {
+  color: var(--dim);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-top: 2rem;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+}
+
+.chat-msg {
+  max-width: 88%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 2px;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  word-break: break-word;
+}
+.chat-msg.user {
+  align-self: flex-end;
+  background: rgba(57,232,122,0.07);
+  border: 1px solid var(--phosphor2);
+  color: var(--phosphor);
+}
+.chat-msg.ai {
+  align-self: flex-start;
+  background: rgba(245,166,35,0.04);
+  border: 1px solid rgba(245,166,35,0.25);
+  color: #c8dac8;
+  white-space: pre-wrap;
+}
+
+.chat-input-row {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.45rem 0.7rem;
+  outline: none;
+  border-radius: 2px;
+  caret-color: var(--phosphor);
+}
+.chat-input:focus { border-color: var(--phosphor2); }
+.chat-input::placeholder { color: var(--dim); }
+.chat-send-btn {
+  background: transparent;
+  border: 1px solid var(--phosphor2);
+  color: var(--phosphor2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.chat-send-btn:hover { background: rgba(57,232,122,0.08); }
+.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── API Key Modal ── */
+.apikey-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.apikey-modal.open { display: flex; }
+.apikey-modal .modal { border-color: var(--phosphor); max-width: 480px; }
+.apikey-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.5rem 0.7rem;
+  outline: none;
+  border-radius: 2px;
+  margin-bottom: 0.6rem;
+  caret-color: var(--phosphor);
+}
+.apikey-input:focus { border-color: var(--phosphor2); }
+.apikey-hint {
+  font-size: 0.68rem;
+  color: var(--phosphor2);
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+.apikey-status {
+  font-size: 0.68rem;
+  margin-bottom: 0.8rem;
+  height: 1rem;
+}
+.apikey-status.ok  { color: var(--phosphor2); }
+.apikey-status.err { color: #e87a7a; }
+
+/* ── AI Score in Feynman ── */
+.ai-feedback {
+  display: none;
+  margin-top: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(57,232,122,0.22);
+  border-radius: 2px;
+  font-size: 0.78rem;
+  color: #b8e8c8;
+  line-height: 1.72;
+  background: rgba(57,232,122,0.03);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ai-feedback.show { display: block; }
+.ai-feedback-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--phosphor2);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.btn-ai   { border-color: var(--phosphor); color: var(--phosphor); }
+.btn-ai:hover { background: rgba(57,232,122,0.08); }
+.btn-ai:disabled { opacity: 0.35; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-top">
+      <span class="tag">SERDES // IC DESIGN</span>
+      <h1 class="title" id="note-title">—</h1>
+      <button class="theme-btn" id="theme-btn">◐ THEME</button>
+      <button class="settings-btn" id="settings-btn">⚙ API KEY</button>
+    </div>
+    <div class="date-line">
+      <span id="note-date">—</span>
+      <span id="note-src">—</span>
+    </div>
+  </div>
+
+  <div class="image-wrap" id="img-wrap">
+    <img class="note-img" id="note-img" src="" alt="筆記原圖">
+  </div>
+
+  <div id="sections-container"></div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <img id="lb-img" src="" alt="">
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-btn">[ AI 問答 ]</button>
+
+<!-- Feynman FAB -->
+<button class="fab" id="feynman-btn">[ 費曼測試 ]</button>
+
+<!-- API Key Modal -->
+<div class="apikey-modal" id="apikey-modal">
+  <div class="modal">
+    <div class="modal-label">⚙ ANTHROPIC API KEY 設定</div>
+    <p class="apikey-hint">Key 僅存於本機 localStorage，不上傳任何伺服器。<br>取得金鑰：<strong style="color:var(--phosphor)">aistudio.google.com</strong> → Get API key（免費）</p>
+    <input type="password" class="apikey-input" id="apikey-input" placeholder="AIza...">
+    <div class="apikey-status" id="apikey-status"></div>
+    <div class="modal-actions">
+      <button class="btn btn-close" id="apikey-close">✕ 取消</button>
+      <button class="btn btn-next" id="apikey-save">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-panel-header">
+    <span class="chat-panel-title">◈ AI CHAT — gemini-2.5-flash</span>
+    <button class="chat-close-btn" id="chat-close">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty">筆記內容已載入為系統上下文。<br>直接提問吧。</div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" placeholder="問我關於這份筆記..." autocomplete="off">
+    <button class="chat-send-btn" id="chat-send">↵ 送出</button>
+  </div>
+</div>
+
+<!-- Feynman Modal -->
+<div class="modal-overlay" id="feynman-modal">
+  <div class="modal">
+    <div class="modal-label">▶ FEYNMAN TEST // 費曼測試</div>
+    <div class="modal-question" id="fm-question">—</div>
+    <input class="modal-input" id="fm-input" placeholder="你的解釋..." autocomplete="off">
+    <div class="modal-answer" id="fm-answer"></div>
+    <div class="ai-feedback" id="ai-feedback">
+      <div class="ai-feedback-label">▶ AI 評分結果</div>
+      <div id="ai-feedback-text"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-close" id="fm-close">✕ 關閉</button>
+      <button class="btn btn-ai" id="fm-ai-score">◈ AI 評分</button>
+      <button class="btn btn-reveal" id="fm-reveal">揭曉答案</button>
+      <button class="btn btn-next" id="fm-next">下一題 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── NOTE_DATA injected by process_note.ps1 ──
+const NOTE_DATA = {"date":"2026-04-04","title":"PLL-L13-P1","sections":[{"content":"[PLL 迴路模型與濾波器設計 (Loop Model \u0026 Filter Design)]","type":"intro"},{"title":"數學推導","content":"（逐步推導，每步說明）\r\n本頁筆記主要推導 Type-II PLL (Charge Pump PLL) 的開迴路增益 (Open Loop Gain) 與轉移函數，這是決定系統穩定度與頻寬的核心。\r\n\r\n1.  **各區塊轉移函數定義**：\r\n    *   **Phase Frequency Detector + Charge Pump (PFD+CP)**: 將相位差 $\\Delta\\phi$ 轉換為電流 $I_{out}$。在一個參考週期 $2\\pi$ 內，最大輸出電流為 $I_p$。其平均轉移增益為 $K_{pd} = \\frac{I_p}{2\\pi}$。\r\n    *   **Loop Filter (一階, 1st order)**: 由電阻 $R_p$ 與電容 $C_p$ 串聯組成。將電流轉換為控制電壓 $V_{ctrl}$。阻抗 $Z(s) = R_p + \\frac{1}{sC_p} = \\frac{sR_pC_p + 1}{sC_p}$。\r\n    *   **Voltage Controlled Oscillator (VCO)**: 將控制電壓轉換為輸出相位。頻率是相位的微分，因此相位是頻率的積分。轉移函數為 $\\frac{K_{vco}}{s}$。\r\n    *   **Divider (除頻器)**: 將輸出相位除以 $M$。反饋增益為 $\\frac{1}{M}$。(筆記中公式 $A$ 主要探討 Forward Gain $G(s)$ 或假設 $M=1$ 的狀況，以簡化極零點分析)。\r\n\r\n2.  **開迴路增益 $A(s)$ (Open Loop Gain)**：\r\n    將上述順向路徑相乘：\r\n    $A(s) = \\left( \\frac{I_p}{2\\pi} \\right) \\cdot \\left( R_p + \\frac{1}{sC_p} \\right) \\cdot \\left( \\frac{K_{vco}}{s} \\right)$\r\n    提出 $\\frac{1}{sC_p}$ 進行整理：\r\n    $A(s) = \\frac{I_p K_{vco}}{2\\pi s} \\cdot \\left( \\frac{sR_pC_p + 1}{sC_p} \\right) = \\frac{I_p K_{vco}}{2\\pi C_p} \\cdot \\frac{(1 + sR_pC_p)}{s^2}$\r\n\r\n3.  **極零點分析 (Pole-Zero Analysis)**：\r\n    *   **極點 (Poles)**：分母有 $s^2$，代表在原點 ($s=0$) 有**兩個極點** ($s_1 = s_2 = 0$)。這定義了這是一個 Type-II 的控制系統，能對 Step 頻率變化達到零穩態誤差。\r\n    *   **零點 (Zero)**：分子為 $(1 + sR_pC_p) = 0$，解得左半平面零點 (LHP Zero) $\\omega_z = \\frac{1}{R_pC_p}$。\r\n    *   **為什麼需要零點？** 兩個原點極點會貢獻 $-180^\\circ$ 的相位延遲。如果沒有零點提昇相位，相位餘裕 (Phase Margin, PM) 會是 /*INJECT_NOTE_DATA*/$ 甚至負的，系統必定震盪（不穩定）。$R_p$ 的加入產生了這個救命的零點。","type":"math"},{"title":"單位解析","content":"**公式單位消去：**\r\n以開迴路增益公式 $A(s) = K_{pd} \\times Z(s) \\times \\frac{K_{vco}}{s}$ 為例：\r\n*   $K_{pd} = \\frac{I_p}{2\\pi}$：單位為 $[\\text{A}/\\text{rad}]$ (每徑度相位差產生多少安培電流)\r\n*   $Z(s) = R_p + \\frac{1}{sC_p}$：單位為 $[\\Omega] = [\\text{V}/\\text{A}]$ (歐姆定律，電流轉電壓)\r\n*   $\\frac{K_{vco}}{s}$：$K_{vco}$ 在此架構下常表示為 $[\\text{rad/s}/\\text{V}]$ (配合 $K_{pd}$ 的 rad)。積分項 $\\frac{1}{s}$ 單位為 $[\\text{s}]$。故 $\\frac{K_{vco}}{s}$ 單位為 $[\\text{rad}/(\\text{s}\\cdot\\text{V})] \\times [\\text{s}] = [\\text{rad}/\\text{V}]$。\r\n*   **單位消去**：$A(s)$ 單位 = $[\\text{A}/\\text{rad}] \\times [\\text{V}/\\text{A}] \\times [\\text{rad}/\\text{V}] = 1$ (**無單位 Unitless**)。迴路增益必須是無因次量，物理意義完全正確。\r\n\r\n**圖表單位推斷：**\r\n📈 **Bode Plot 單位推斷 (筆記左側中段圖表)**：\r\n*   **X 軸**：角頻率 $\\omega$ $[\\text{rad/s}]$，對數尺度 (Log-scale)。典型範圍 $10^4 \\sim 10^9 \\text{ rad/s}$。\r\n*   **Y 軸 (上圖 $|A|$)**：開迴路增益大小 $[\\text{dB}]$。典型範圍 $-40 \\text{ dB} \\sim 80 \\text{ dB}$。\r\n*   **Y 軸 (下圖 $\\angle A$)**：相位角 $[\\text{Degree}, ^\\circ]$。典型範圍 $-180^\\circ \\sim -90^\\circ$ (考量高頻寄生極點會掉到 $-180^\\circ$ 以下)。圖中標示的 $PM$ 即為在增益 /*INJECT_NOTE_DATA*/\\text{dB}$ 頻率（Crossover Frequency, $\\omega_c$）時，相位與 $-180^\\circ$ 的距離。\r\n*(筆記特別指出：若 $I_p K_{vco}$ 下降，Gain 曲線整體下移，導致交越頻率左移靠近 $\\omega_z$，使得 Phase Margin 變小，穩定度惡化。)*","type":"units"},{"title":"白話物理意義","content":"Loop Filter 裡的電阻 $R_p$ 就像是給系統裝上「預測煞車」，它提早給出相位超前（Zero），把因為 Charge Pump 和 VCO 雙重積分導致快要失控翻車的 PLL 硬生生拉回穩定軌道，代價是會產生顛簸（Ripple / Spur）。","type":"plain"},{"title":"生活化比喻","content":"想像你在開一台車（VCO），如果只靠看終點線來加速（只有 $C_p$ 積分），你會一路狂奔，等到過了終點才發現並開始倒車，最後在終點線來回震盪停不下來（這就是只有雙極點的不穩定）。\r\n加上電阻 $R_p$ 就像加入了「感受速度」的機制（微分作用），當你快接近終點但速度還很快時，你會提早踩煞車，穩穩地停在終點上（Zero 提升相位，增加 PM）。然而，煞車皮摩擦會產生碎震（$I_p \\times R_p$ 產生的突波），所以我們需要額外加裝小避震器（並聯的小電容 $C_s$）來吸收這些震動。","type":"analogy"},{"title":"面試必考點","items":[{"question":"在 Type-II Charge Pump PLL 中，如果 Loop Filter 只放一顆電容 $C_p$ 會怎樣？為什麼一定要串聯電阻 $R_p$？","answer":"* **答案**：只放 $C_p$ 會導致開迴路轉移函數在原點有兩個極點（一個來自 CP 電流對 $C_p$ 積分，另一個來自 VCO 頻率積分成相位），相位直接從 $-180^\\circ$ 開始，Phase Margin 為零，系統絕對不穩定。串聯 $R_p$ 能產生一個左半平面零點 (LHP Zero, $\\omega_z = 1/R_pC_p$)，提供相位超前 (Phase Lead)，將相位拉回 $-90^\\circ$ 的方向，確保系統擁有足夠的 Phase Margin 才能穩定鎖定。"},{"question":"加了 $R_p$ 穩定了系統，卻帶來了 Reference Spur 的問題，機制是什麼？要怎麼解決？","answer":"* **答案**：當 PLL 鎖定時，PFD 仍會輸出極短的脈衝。Charge Pump 的瞬間脈衝電流 $I_p$ 流過 $R_p$ 時，會產生巨大的電壓突波 $\\Delta V = I_p \\times R_p$ (Ripple)。這個突波會直接調變 VCO 的控制電壓 $V_{ctrl}$，在輸出頻譜上產生 Reference Spur 並且嚴重惡化 Jitter。解決方案是在 $R_p$ 與 $C_p$ 旁邊並聯一顆小電容 $C_s$（通常 $C_s \u003c 5\\% \\sim 10\\% \\text{ of } C_p$）構成 2nd-order Loop Filter，利用 $C_s$ 提供高頻電流的低阻抗旁路，有效吸收並濾除突波。"},{"question":"為了濾除 Ripple 加入了額外的極點（如 3rd-order 迴路中的 LPF 極點 $\\omega_3$），這些極點的頻率位置該怎麼決定？","answer":"* **答案**：筆記下方明確指出，頻率擺放必須滿足 $\\text{Loop BW} \u003c \\omega_3 \u003c \\omega_{ref} \\ll \\omega_{osc}$。\r\n     1. $\\omega_3 \\approx 10 \\times \\text{Loop BW}$：確保高頻極點遠離 Crossover frequency ($\\omega_c$)，避免其造成的相位延遲吃到好不容易用零點建起來的 Phase Margin，導致穩定度下降。\r\n     2. $\\omega_3 \u003c \\omega_{ref}$：確保截止頻率夠低（比 Update Rate 慢），才能有效衰減 Reference frequency 帶來的 Vctrl Ripple 與 Spur。連續時間近似的前提是 $f_{ref}$ 夠快，讓離散的 Pulse 看起來像平均電流。"}],"type":"quiz"},{"content":"「雙極不穩加 R 救，R 生突波 C 來收；零點保相極點濾，頻寬十倍好悠遊。」\r\n（雙極點不穩定加電阻救，電阻產生突波加電容收；零點保留相位餘裕、極點用來濾波，極點頻率放頻寬十倍遠最好）","type":"mnemonic"}],"imageUrl":"../images/PLL-L13-P1.jpg"};
+
+// ── Render ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.title = NOTE_DATA.title + ' | SerDes Note';
+  document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
+  document.getElementById('note-title').textContent = NOTE_DATA.title;
+  document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
+  document.getElementById('note-src').textContent = '原始圖片：' + NOTE_DATA.imageUrl;
+
+  const img = document.getElementById('note-img');
+  img.src = NOTE_DATA.imageUrl;
+
+  const container = document.getElementById('sections-container');
+  const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };
+  const labels = { intro:'概覽', math:'數學推導', units:'單位解析', plain:'白話物理意義', analogy:'生活化比喻', quiz:'面試必考點', mnemonic:'記憶口訣', qa:'問題延伸' };
+
+  NOTE_DATA.sections.forEach((sec, i) => {
+    const el = document.createElement('div');
+    el.className = 'section ' + sec.type;
+    el.style.transitionDelay = (i * 0.07) + 's';
+
+    if (sec.type === 'quiz') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${sec.title || labels[sec.type]}</span>
+        </div>
+        <div class="section-body">
+          <div class="quiz-list">
+            ${sec.items.map((q, n) => `
+              <div class="card" data-idx="${n}">
+                <div class="card-q">
+                  <span class="card-num">Q${n+1}</span>
+                  <span class="card-q-text">${escHtml(q.question)}</span>
+                  <span class="card-toggle">▶</span>
+                </div>
+                <div class="card-a">${escHtml(q.answer)}</div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    } else if (sec.type === 'mnemonic') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${escHtml(sec.content)}</div>`;
+    } else if (sec.type === 'units') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${renderUnits(sec.content)}</div>`;
+    } else if (sec.type === 'qa') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${renderQA(sec.items)}</div>`;
+    } else {
+      const title = sec.title || labels[sec.type];
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${title}</span>
+        </div>
+        <div class="section-body">${mdToHtml(sec.content)}</div>`;
+    }
+
+    container.appendChild(el);
+  });
+
+  // KaTeX render
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left:'$$', right:'$$', display:true},
+      {left:'$', right:'$', display:false}
+    ],
+    throwOnError: false
+  });
+
+  // Intersection Observer for reveal
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.section').forEach(s => obs.observe(s));
+
+  // Quiz cards toggle
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('open'));
+  });
+
+  // Lightbox
+  const imgWrap = document.getElementById('img-wrap');
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lb-img');
+  imgWrap.addEventListener('click', () => { lbImg.src = img.src; lb.classList.add('open'); });
+  lb.addEventListener('click', () => lb.classList.remove('open'));
+
+  // Feynman
+  const quizSection = NOTE_DATA.sections.find(s => s.type === 'quiz');
+  const allQ = quizSection ? quizSection.items : [];
+  let fmIdx = 0;
+
+  function openFeynman() {
+    if (!allQ.length) return;
+    fmIdx = Math.floor(Math.random() * allQ.length);
+    showFeynman();
+    document.getElementById('feynman-modal').classList.add('open');
+  }
+
+  function showFeynman() {
+    window._fmIdx = fmIdx;
+    document.getElementById('fm-question').textContent = allQ[fmIdx].question;
+    document.getElementById('fm-input').value = '';
+    const ans = document.getElementById('fm-answer');
+    ans.textContent = allQ[fmIdx].answer;
+    ans.classList.remove('show');
+    renderMathInElement(document.getElementById('fm-question'), { delimiters: [{left:'$',right:'$',display:false},{left:'$$',right:'$$',display:true}], throwOnError:false });
+    renderMathInElement(ans, { delimiters: [{left:'$',right:'$',display:false},{left:'$$',right:'$$',display:true}], throwOnError:false });
+  }
+
+  document.getElementById('feynman-btn').addEventListener('click', openFeynman);
+  document.getElementById('fm-close').addEventListener('click', () => document.getElementById('feynman-modal').classList.remove('open'));
+  document.getElementById('fm-reveal').addEventListener('click', () => document.getElementById('fm-answer').classList.toggle('show'));
+  document.getElementById('fm-next').addEventListener('click', () => {
+    fmIdx = (fmIdx + 1) % allQ.length;
+    showFeynman();
+  });
+});
+
+function renderUnits(text) {
+  // Split into unit-block (公式消去) and chart-infer (圖表推斷) sub-blocks
+  let html = mdToHtml(text);
+  // Wrap lines starting with 📈 in chart-infer div
+  html = html.replace(/<p>(📈[\s\S]*?)<\/p>/g, '<div class="chart-infer">$1</div>');
+  // Wrap lines containing [X] × [Y] style unit derivations in unit-block div
+  html = html.replace(/<p>([^<]*\[[\w\/]+\][^<]*=[^<]*)<\/p>/g, '<div class="unit-block">$1</div>');
+  return html;
+}
+
+function renderQA(items) {
+  if (!items || !items.length) return '<p style="color:var(--dim)">尚無延伸問題</p>';
+  return items.map((q, i) => `
+    <div class="qa-item">
+      <div class="qa-item-q">Q${i+1}：${escHtml(q.question)}</div>
+      <div class="qa-item-a">${mdToHtml(q.answer)}</div>
+    </div>`).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function mdToHtml(text) {
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Numbered list items
+  text = text.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+  text = text.replace(/(<li>.*<\/li>\n?)+/gs, m => '<ol>' + m + '</ol>');
+  // Bullet list items
+  text = text.replace(/^\*\s+(.+)$/gm, '<li>$1</li>');
+  text = text.replace(/(<li>(?!.*<\/ol>).*<\/li>\n?)+/gs, m => '<ul>' + m + '</ul>');
+  // Horizontal rule
+  text = text.replace(/^---$/gm, '<hr style="border-color:var(--dim);margin:0.8rem 0">');
+  // Paragraphs (split by double newline)
+  text = text.split(/\n{2,}/).map(p => {
+    p = p.trim();
+    if (!p || p.startsWith('<ol>') || p.startsWith('<ul>') || p.startsWith('<hr')) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+  return text;
+}
+
+// ════════════════════════════════════════════════
+// Gemini API Integration (免費 tier)
+// ════════════════════════════════════════════════
+
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_API   = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':streamGenerateContent';
+
+function getApiKey() { return localStorage.getItem('gemini_api_key') || ''; }
+function setApiKey(k) { localStorage.setItem('gemini_api_key', k); }
+
+function buildSystemPrompt() {
+  let sys = `你是一位嚴格的 IC 設計助教，專精高速 SerDes / PLL / CDR / TIA 等電路設計（55nm及以下製程）。\n`;
+  sys += `現在的學習筆記：${NOTE_DATA.title}（${NOTE_DATA.date}）\n\n`;
+  sys += `以下是筆記的完整內容：\n`;
+  NOTE_DATA.sections.forEach(sec => {
+    if (sec.type === 'quiz') {
+      sys += `\n## 面試必考點\n`;
+      sec.items.forEach((q, i) => {
+        sys += `Q${i+1}: ${q.question}\nA: ${q.answer}\n`;
+      });
+    } else if (sec.content) {
+      const t = sec.title || ({ intro:'概覽', math:'數學推導', plain:'白話物理意義', analogy:'生活化比喻', mnemonic:'記憶口訣' })[sec.type] || sec.type;
+      sys += `\n## ${t}\n${sec.content}\n`;
+    }
+  });
+  sys += `\n請以繁體中文回答，精準且言簡意賅。`;
+  return sys;
+}
+
+// Gemini 用 "model" 而非 "assistant"
+function toGeminiHistory(messages) {
+  return messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : m.role,
+    parts: [{ text: m.content }]
+  }));
+}
+
+async function streamClaude(messages, onChunk, onDone, onError) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    document.getElementById('apikey-modal').classList.add('open');
+    document.getElementById('apikey-input').focus();
+    if (onError) onError('請先設定 Gemini API Key');
+    return;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(GEMINI_API + '?alt=sse&key=' + encodeURIComponent(apiKey), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: buildSystemPrompt() }] },
+        contents: toGeminiHistory(messages),
+        generationConfig: { maxOutputTokens: 1024 }
+      })
+    });
+  } catch (e) {
+    if (onError) onError('網路錯誤：' + e.message);
+    onDone();
+    return;
+  }
+
+  if (!resp.ok) {
+    let errMsg = resp.statusText;
+    try { const j = await resp.json(); errMsg = j.error?.message || errMsg; } catch {}
+    if (onError) onError('[' + resp.status + '] ' + errMsg);
+    onDone();
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim();
+      if (!d || d === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(d);
+        const text = evt.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) onChunk(text);
+      } catch {}
+    }
+  }
+  onDone();
+}
+
+// ── Theme Toggle ──
+const themeBtn = document.getElementById('theme-btn');
+if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+});
+
+// ── Settings Modal ──
+const settingsBtn   = document.getElementById('settings-btn');
+const apikeyModal   = document.getElementById('apikey-modal');
+const apikeyInput   = document.getElementById('apikey-input');
+const apikeyStatus  = document.getElementById('apikey-status');
+const apikeyClose   = document.getElementById('apikey-close');
+const apikeySave    = document.getElementById('apikey-save');
+
+settingsBtn.addEventListener('click', () => {
+  apikeyInput.value = getApiKey();
+  apikeyStatus.textContent = getApiKey() ? '✓ 已設定' : '尚未設定';
+  apikeyStatus.className = 'apikey-status ' + (getApiKey() ? 'ok' : 'err');
+  apikeyModal.classList.add('open');
+});
+apikeyClose.addEventListener('click', () => apikeyModal.classList.remove('open'));
+apikeySave.addEventListener('click', () => {
+  const k = apikeyInput.value.trim();
+  if (!k) { apikeyStatus.textContent = '請輸入 API Key'; apikeyStatus.className = 'apikey-status err'; return; }
+  setApiKey(k);
+  settingsBtn.classList.add('active');
+  apikeyStatus.textContent = '✓ 已儲存';
+  apikeyStatus.className = 'apikey-status ok';
+  setTimeout(() => apikeyModal.classList.remove('open'), 700);
+});
+apikeyInput.addEventListener('keydown', e => { if (e.key === 'Enter') apikeySave.click(); });
+if (getApiKey()) settingsBtn.classList.add('active');
+
+// ── Chat Panel ──
+const chatBtn      = document.getElementById('chat-btn');
+const chatPanel    = document.getElementById('chat-panel');
+const chatClose    = document.getElementById('chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput    = document.getElementById('chat-input');
+const chatSend     = document.getElementById('chat-send');
+
+let chatHistory = [];
+let chatStreaming = false;
+
+chatBtn.addEventListener('click', () => chatPanel.classList.toggle('open'));
+chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
+
+function appendChatMsg(role, text) {
+  const empty = chatMessages.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const q = chatInput.value.trim();
+  if (!q || chatStreaming) return;
+  chatInput.value = '';
+  chatStreaming = true;
+  chatSend.disabled = true;
+
+  chatHistory.push({ role: 'user', content: q });
+  appendChatMsg('user', q);
+
+  const aiDiv = appendChatMsg('ai', '');
+  let buf = '';
+
+  await streamClaude(
+    chatHistory,
+    (chunk) => {
+      buf += chunk;
+      aiDiv.textContent = buf;
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    },
+    () => {
+      chatHistory.push({ role: 'assistant', content: buf });
+      chatStreaming = false;
+      chatSend.disabled = false;
+      chatInput.focus();
+    },
+    (err) => {
+      aiDiv.textContent = '⚠ ' + err;
+      chatStreaming = false;
+      chatSend.disabled = false;
+    }
+  );
+}
+
+chatSend.addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+
+// ── AI Score in Feynman ──
+const fmAiScore    = document.getElementById('fm-ai-score');
+const aiFeedback   = document.getElementById('ai-feedback');
+const aiFeedbackTx = document.getElementById('ai-feedback-text');
+let aiScoring = false;
+
+fmAiScore.addEventListener('click', async () => {
+  const q = document.getElementById('fm-question').textContent;
+  const userAns = document.getElementById('fm-input').value.trim();
+  const correctAns = document.getElementById('fm-answer').textContent ||
+    (NOTE_DATA.sections.find(s => s.type === 'quiz')?.items[window._fmIdx || 0]?.answer || '');
+
+  if (!userAns) {
+    aiFeedbackTx.textContent = '請先輸入你的答案。';
+    aiFeedback.classList.add('show');
+    return;
+  }
+  if (aiScoring) return;
+  aiScoring = true;
+  fmAiScore.disabled = true;
+
+  aiFeedbackTx.textContent = '評分中...';
+  aiFeedback.classList.add('show');
+  let buf = '';
+
+  const evalMessages = [{
+    role: 'user',
+    content: `問題：${q}\n\n學生的回答：${userAns}\n\n參考答案：${correctAns}\n\n請評分（1-10分）並給出具體改進建議，說明哪裡答對了、哪裡還不夠精確。請用繁體中文，簡潔有力。`
+  }];
+
+  await streamClaude(
+    evalMessages,
+    (chunk) => {
+      buf += chunk;
+      aiFeedbackTx.textContent = buf;
+    },
+    () => {
+      aiScoring = false;
+      fmAiScore.disabled = false;
+    },
+    (err) => {
+      aiFeedbackTx.textContent = '⚠ ' + err;
+      aiScoring = false;
+      fmAiScore.disabled = false;
+    }
+  );
+});
+
+// reset AI feedback when question changes
+const origShowFeynman = window._showFeynmanOrig;
+document.getElementById('fm-next').addEventListener('click', () => {
+  aiFeedback.classList.remove('show');
+  aiFeedbackTx.textContent = '';
+  fmAiScore.disabled = false;
+  aiScoring = false;
+}, true);
+document.getElementById('fm-close').addEventListener('click', () => {
+  aiFeedback.classList.remove('show');
+  aiScoring = false;
+  fmAiScore.disabled = false;
+}, true);
+</script>
+</body>
+</html>
