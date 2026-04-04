@@ -65,7 +65,7 @@ if ($qaItems.Count -gt 0) {
 $noteData = @{
     title    = $NoteName
     date     = $noteDate
-    imageUrl = "../images/$NoteName.jpg"
+    imageUrl = "../images/done/$NoteName.jpg"
     sections = $sections
 }
 
