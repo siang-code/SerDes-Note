@@ -1,3 +1,6 @@
 .mcp.json
 node_modules/
 .env
+images/private/
+notes/55nm-*.md
+notes/55nm-*.html

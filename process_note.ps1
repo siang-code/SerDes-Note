@@ -204,7 +204,6 @@ foreach ($ImageFile in $ImageFiles) {
         Write-Host "[1/4] 識別筆記標題..." -ForegroundColor Yellow
         $TitlePrompt = "請只回答這張筆記右上角的標題文字，不要加任何其他說明。格式範例：PLL-L1-P1"
         $RawTitle = & gemini -p "$TitlePrompt @$ImagePath" 2>$null | Out-String
-        Write-Host "  [DEBUG] Gemini raw: $($RawTitle.Trim())" -ForegroundColor Magenta
         $titleMatch = [regex]::Match($RawTitle, '[A-Z]{2,10}-L\d+-P\d+')
         $NoteName = if ($titleMatch.Success) {
             $titleMatch.Value -replace '[\\/:*?"<>|]', '-'
