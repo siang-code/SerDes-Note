@@ -129,8 +129,10 @@ if ($Name -and $ImageFiles.Count -gt 1) {
         return $items
     }
 
-    $h2Match    = [regex]::Match($mdContent, '## (.+)')
-    $intro      = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
+    $h2Match    = [regex]::Match($mdContent, '(?m)## ([^\r\n]+)\r?\n([\s\S]*?)(?=\r?\n### |\z)')
+    $introTitle = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
+    $introBody  = if ($h2Match.Success) { $h2Match.Groups[2].Value.Trim() } else { "" }
+    $intro      = if ($introBody) { "$introTitle`n`n$introBody" } else { $introTitle }
     $mathSec    = Get-Section $mdContent "數學推導"
     $unitsSec   = Get-Section $mdContent "單位解析"
     $plainSec   = Get-Section $mdContent "白話物理意義"
@@ -164,7 +166,7 @@ if ($Name -and $ImageFiles.Count -gt 1) {
     }
     $noteDataJson    = $noteData | ConvertTo-Json -Depth 8 -Compress
     $templateContent = [System.IO.File]::ReadAllText($TemplatePath, [System.Text.Encoding]::UTF8)
-    $htmlContent     = $templateContent -replace '/\*INJECT_NOTE_DATA\*/', "const NOTE_DATA = $noteDataJson;"
+    $htmlContent     = $templateContent.Replace('/*INJECT_NOTE_DATA*/', "const NOTE_DATA = $noteDataJson;")
     [System.IO.File]::WriteAllText($HtmlPath, $htmlContent, $utf8)
     Write-Host "  HTML：notes\$NoteName.html" -ForegroundColor Green
 
@@ -296,8 +298,10 @@ foreach ($ImageFile in $ImageFiles) {
         return $items
     }
 
-    $h2Match    = [regex]::Match($mdContent, '## (.+)')
-    $intro      = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
+    $h2Match    = [regex]::Match($mdContent, '(?m)## ([^\r\n]+)\r?\n([\s\S]*?)(?=\r?\n### |\z)')
+    $introTitle = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
+    $introBody  = if ($h2Match.Success) { $h2Match.Groups[2].Value.Trim() } else { "" }
+    $intro      = if ($introBody) { "$introTitle`n`n$introBody" } else { $introTitle }
     $mathSec    = Get-Section $mdContent "數學推導"
     $unitsSec   = Get-Section $mdContent "單位解析"
     $plainSec   = Get-Section $mdContent "白話物理意義"
@@ -335,7 +339,7 @@ foreach ($ImageFile in $ImageFiles) {
     }
     $noteDataJson    = $noteData | ConvertTo-Json -Depth 8 -Compress
     $templateContent = [System.IO.File]::ReadAllText($TemplatePath, [System.Text.Encoding]::UTF8)
-    $htmlContent     = $templateContent -replace '/\*INJECT_NOTE_DATA\*/', "const NOTE_DATA = $noteDataJson;"
+    $htmlContent     = $templateContent.Replace('/*INJECT_NOTE_DATA*/', "const NOTE_DATA = $noteDataJson;")
     [System.IO.File]::WriteAllText($HtmlPath, $htmlContent, $utf8)
     Write-Host "  互動 HTML：notes\$NoteName.html" -ForegroundColor Green
 

@@ -921,10 +921,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Lightbox
-  const imgWrap = document.getElementById('img-wrap');
   const lb = document.getElementById('lightbox');
   const lbImg = document.getElementById('lb-img');
-  imgWrap.addEventListener('click', () => { lbImg.src = img.src; lb.classList.add('open'); });
+  imgWrap.addEventListener('click', e => { if (e.target.tagName === 'IMG') { lbImg.src = e.target.src; lb.classList.add('open'); } });
   lb.addEventListener('click', () => lb.classList.remove('open'));
 
   // Feynman
