@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">SerDes Note</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  --bg:        #121212;
+  --bg2:       #1a1a1a;
+  --grid:      rgba(0,255,60,0.03);
+  --phosphor:  #39e87a;
+  --phosphor2: #1fa84e;
+  --text:      #D1D5DB;
+  --amber:     #f5a623;
+  --dim:       #2a4a2a;
+  --border:    rgba(57,232,122,0.18);
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui:   'Rajdhani', sans-serif;
+  --scan-size: 3px;
+}
+
+/* Light theme */
+body.light {
+  --bg:        #FFFFFF;
+  --bg2:       #F9FAFB;
+  --grid:      rgba(0,0,0,0.04);
+  --text:      #111827;
+  --dim:       #9CA3AF;
+  --border:    #E5E7EB;
+  --phosphor:  #059669;
+  --phosphor2: #047857;
+  --amber:     #D97706;
+  --scan-size: 0px;
+}
+
+body.light .section.math .section-body,
+body.light .section.units .section-body,
+body.light .section.qa .section-body,
+body.light .card-a,
+body.light .qa-item-a,
+body.light .modal-answer,
+body.light .ai-feedback,
+body.light .section.units .chart-infer { color: #374151; }
+
+body.light .title,
+body.light .section.mnemonic .section-body { text-shadow: none; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* CRT scanlines */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--scan-size) - 1px),
+    rgba(0,0,0,0.08) var(--scan-size)
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--phosphor2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-ui);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--phosphor);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(57,232,122,0.4);
+}
+
+.date-line {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--phosphor2);
+  display: flex;
+  gap: 2rem;
+}
+
+/* ── Image viewer ── */
+.image-wrap {
+  position: relative;
+  margin-bottom: 2.5rem;
+  cursor: zoom-in;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.image-wrap::before {
+  content: '[ RAW_SCAN ]';
+  position: absolute;
+  top: 0.5rem; left: 0.7rem;
+  font-size: 0.65rem;
+  color: var(--phosphor2);
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+.image-wrap::after {
+  content: '⊕ ZOOM';
+  position: absolute;
+  bottom: 0.5rem; right: 0.7rem;
+  font-size: 0.65rem;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+.note-img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.92) contrast(1.1);
+  transition: filter 0.2s;
+}
+.image-wrap:hover .note-img { filter: brightness(1) contrast(1.15); }
+
+/* Lightbox */
+.lightbox {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 2000;
+  cursor: zoom-out;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox.open { display: flex; }
+.lightbox img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border: 1px solid var(--border);
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.section.visible { opacity: 1; transform: none; }
+
+.section-header {
+  background: var(--bg2);
+  padding: 0.55rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-icon {
+  font-size: 0.9rem;
+  color: var(--amber);
+}
+
+.section-title {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.section-body {
+  padding: 1.2rem 1.2rem;
+  line-height: 1.8;
+  font-size: 0.88rem;
+}
+
+/* intro special */
+.section.intro .section-body {
+  color: var(--phosphor);
+  border-left: 3px solid var(--amber);
+  font-size: 0.9rem;
+}
+
+/* math section */
+.section.math .section-body { color: #b8e8c8; }
+
+/* ── Unit analysis sub-section ── */
+.section.units {
+  margin-top: -1.2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(245,166,35,0.15);
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+  margin-left: 1.5rem;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.section.units.visible { opacity: 1; transform: none; }
+.section.units .section-header {
+  background: rgba(245,166,35,0.05);
+  border-bottom: 1px solid rgba(245,166,35,0.12);
+}
+.section.units .section-title {
+  font-size: 0.72rem;
+  color: var(--amber);
+  opacity: 0.85;
+}
+.section.units .section-body {
+  font-size: 0.82rem;
+  color: #c8d8c8;
+  line-height: 1.75;
+}
+.section.units .unit-block {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(245,166,35,0.1);
+  border-radius: 2px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--amber);
+  line-height: 1.7;
+}
+.section.units .chart-infer {
+  background: rgba(57,232,122,0.04);
+  border: 1px solid rgba(57,232,122,0.12);
+  border-radius: 2px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  font-size: 0.78rem;
+  color: #8be8aa;
+  line-height: 1.7;
+}
+
+/* ── Q&A append section ── */
+.section.qa .section-body {
+  color: #b8d8e8;
+}
+.qa-item {
+  margin-bottom: 1.2rem;
+  border-left: 2px solid var(--phosphor2);
+  padding-left: 0.9rem;
+}
+.qa-item-q {
+  font-weight: 600;
+  color: var(--phosphor);
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+}
+.qa-item-a {
+  font-size: 0.82rem;
+  color: #8be8aa;
+  line-height: 1.75;
+}
+
+.section-body ol {
+  padding-left: 1.4rem;
+}
+
+.section-body ol li, .section-body ul li {
+  margin-bottom: 0.5rem;
+}
+
+.section-body strong {
+  color: var(--phosphor);
+}
+
+/* ── Quiz flashcards ── */
+.quiz-list { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.card {
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--phosphor2); }
+.card.open  { border-color: var(--phosphor); }
+
+.card-q {
+  padding: 0.7rem 1rem;
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  font-size: 0.85rem;
+}
+
+.card-num {
+  color: var(--amber);
+  min-width: 1.5rem;
+  font-weight: bold;
+}
+
+.card-q-text { flex: 1; color: var(--phosphor); }
+
+.card-toggle {
+  color: var(--phosphor2);
+  font-size: 0.7rem;
+  min-width: 1.5rem;
+  text-align: right;
+  margin-top: 0.1rem;
+  transition: transform 0.25s;
+}
+.card.open .card-toggle { transform: rotate(90deg); color: var(--phosphor); }
+
+.card-a {
+  display: none;
+  padding: 0.7rem 1rem 0.9rem 3.3rem;
+  font-size: 0.83rem;
+  line-height: 1.75;
+  color: #8be8aa;
+  background: rgba(57,232,122,0.03);
+  border-top: 1px solid var(--dim);
+}
+.card.open .card-a { display: block; }
+
+/* ── Mnemonic ── */
+.section.mnemonic .section-body {
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 1.5rem;
+  text-shadow: 0 0 10px rgba(245,166,35,0.3);
+}
+
+/* ── Feynman FAB ── */
+.fab {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  z-index: 500;
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(245,166,35,0.15);
+}
+.fab:hover {
+  background: rgba(245,166,35,0.08);
+  box-shadow: 0 0 20px rgba(245,166,35,0.3);
+}
+
+/* ── Feynman Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 1500;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  border-radius: 2px;
+  padding: 2rem;
+  max-width: 620px;
+  width: 90%;
+  position: relative;
+}
+
+.modal-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.modal-question {
+  font-family: var(--font-ui);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--phosphor);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.modal-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  outline: none;
+  margin-bottom: 1.2rem;
+  caret-color: var(--phosphor);
+}
+.modal-input::placeholder { color: var(--dim); }
+
+.modal-actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+}
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 1rem;
+  border: 1px solid;
+  border-radius: 2px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s;
+}
+.btn-reveal { border-color: var(--phosphor2); color: var(--phosphor2); }
+.btn-reveal:hover { background: rgba(57,232,122,0.08); }
+.btn-next   { border-color: var(--amber); color: var(--amber); }
+.btn-next:hover { background: rgba(245,166,35,0.08); }
+.btn-close  { border-color: var(--dim); color: var(--dim); }
+.btn-close:hover { border-color: var(--phosphor2); color: var(--phosphor2); }
+
+.modal-answer {
+  display: none;
+  font-size: 0.82rem;
+  color: #8be8aa;
+  line-height: 1.75;
+  border-top: 1px solid var(--dim);
+  margin-top: 0.5rem;
+  padding-top: 0.8rem;
+}
+.modal-answer.show { display: block; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ── Theme / Settings buttons ── */
+.theme-btn, .settings-btn {
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  letter-spacing: 0.08em;
+}
+.theme-btn { margin-left: auto; }
+.theme-btn:hover, .settings-btn:hover { border-color: var(--phosphor2); color: var(--phosphor2); }
+.settings-btn.active { border-color: var(--phosphor); color: var(--phosphor); }
+
+/* ── Chat FAB ── */
+.chat-fab {
+  position: fixed;
+  bottom: 2rem; right: 10.5rem;
+  z-index: 500;
+  background: var(--bg2);
+  border: 1px solid var(--phosphor);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(57,232,122,0.15);
+}
+.chat-fab:hover {
+  background: rgba(57,232,122,0.08);
+  box-shadow: 0 0 20px rgba(57,232,122,0.3);
+}
+
+/* ── Chat Panel ── */
+.chat-panel {
+  position: fixed;
+  top: 0; right: -420px;
+  width: 400px;
+  height: 100vh;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease;
+}
+.chat-panel.open { right: 0; }
+
+.chat-panel-header {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.chat-panel-title {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--phosphor);
+  text-transform: uppercase;
+}
+.chat-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--phosphor2);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  padding: 0.2rem;
+}
+.chat-close-btn:hover { color: var(--phosphor); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.chat-empty {
+  color: var(--dim);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-top: 2rem;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+}
+
+.chat-msg {
+  max-width: 88%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 2px;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  word-break: break-word;
+}
+.chat-msg.user {
+  align-self: flex-end;
+  background: rgba(57,232,122,0.07);
+  border: 1px solid var(--phosphor2);
+  color: var(--phosphor);
+}
+.chat-msg.ai {
+  align-self: flex-start;
+  background: rgba(245,166,35,0.04);
+  border: 1px solid rgba(245,166,35,0.25);
+  color: #c8dac8;
+  white-space: pre-wrap;
+}
+
+.chat-input-row {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.45rem 0.7rem;
+  outline: none;
+  border-radius: 2px;
+  caret-color: var(--phosphor);
+}
+.chat-input:focus { border-color: var(--phosphor2); }
+.chat-input::placeholder { color: var(--dim); }
+.chat-send-btn {
+  background: transparent;
+  border: 1px solid var(--phosphor2);
+  color: var(--phosphor2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.chat-send-btn:hover { background: rgba(57,232,122,0.08); }
+.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── API Key Modal ── */
+.apikey-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.apikey-modal.open { display: flex; }
+.apikey-modal .modal { border-color: var(--phosphor); max-width: 480px; }
+.apikey-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.5rem 0.7rem;
+  outline: none;
+  border-radius: 2px;
+  margin-bottom: 0.6rem;
+  caret-color: var(--phosphor);
+}
+.apikey-input:focus { border-color: var(--phosphor2); }
+.apikey-hint {
+  font-size: 0.68rem;
+  color: var(--phosphor2);
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+.apikey-status {
+  font-size: 0.68rem;
+  margin-bottom: 0.8rem;
+  height: 1rem;
+}
+.apikey-status.ok  { color: var(--phosphor2); }
+.apikey-status.err { color: #e87a7a; }
+
+/* ── AI Score in Feynman ── */
+.ai-feedback {
+  display: none;
+  margin-top: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(57,232,122,0.22);
+  border-radius: 2px;
+  font-size: 0.78rem;
+  color: #b8e8c8;
+  line-height: 1.72;
+  background: rgba(57,232,122,0.03);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ai-feedback.show { display: block; }
+.ai-feedback-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--phosphor2);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.btn-ai   { border-color: var(--phosphor); color: var(--phosphor); }
+.btn-ai:hover { background: rgba(57,232,122,0.08); }
+.btn-ai:disabled { opacity: 0.35; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-top">
+      <span class="tag">SERDES // IC DESIGN</span>
+      <h1 class="title" id="note-title">—</h1>
+      <button class="theme-btn" id="theme-btn">◐ THEME</button>
+      <button class="settings-btn" id="settings-btn">⚙ API KEY</button>
+    </div>
+    <div class="date-line">
+      <span id="note-date">—</span>
+      <span id="note-src">—</span>
+    </div>
+  </div>
+
+  <div class="image-wrap" id="img-wrap">
+    <img class="note-img" id="note-img" src="" alt="筆記原圖">
+  </div>
+
+  <div id="sections-container"></div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <img id="lb-img" src="" alt="">
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-btn">[ AI 問答 ]</button>
+
+<!-- Feynman FAB -->
+<button class="fab" id="feynman-btn">[ 費曼測試 ]</button>
+
+<!-- API Key Modal -->
+<div class="apikey-modal" id="apikey-modal">
+  <div class="modal">
+    <div class="modal-label">⚙ ANTHROPIC API KEY 設定</div>
+    <p class="apikey-hint">Key 僅存於本機 localStorage，不上傳任何伺服器。<br>取得金鑰：<strong style="color:var(--phosphor)">aistudio.google.com</strong> → Get API key（免費）</p>
+    <input type="password" class="apikey-input" id="apikey-input" placeholder="AIza...">
+    <div class="apikey-status" id="apikey-status"></div>
+    <div class="modal-actions">
+      <button class="btn btn-close" id="apikey-close">✕ 取消</button>
+      <button class="btn btn-next" id="apikey-save">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-panel-header">
+    <span class="chat-panel-title">◈ AI CHAT — gemini-2.5-flash</span>
+    <button class="chat-close-btn" id="chat-close">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty">筆記內容已載入為系統上下文。<br>直接提問吧。</div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" placeholder="問我關於這份筆記..." autocomplete="off">
+    <button class="chat-send-btn" id="chat-send">↵ 送出</button>
+  </div>
+</div>
+
+<!-- Feynman Modal -->
+<div class="modal-overlay" id="feynman-modal">
+  <div class="modal">
+    <div class="modal-label">▶ FEYNMAN TEST // 費曼測試</div>
+    <div class="modal-question" id="fm-question">—</div>
+    <input class="modal-input" id="fm-input" placeholder="你的解釋..." autocomplete="off">
+    <div class="modal-answer" id="fm-answer"></div>
+    <div class="ai-feedback" id="ai-feedback">
+      <div class="ai-feedback-label">▶ AI 評分結果</div>
+      <div id="ai-feedback-text"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-close" id="fm-close">✕ 關閉</button>
+      <button class="btn btn-ai" id="fm-ai-score">◈ AI 評分</button>
+      <button class="btn btn-reveal" id="fm-reveal">揭曉答案</button>
+      <button class="btn btn-next" id="fm-next">下一題 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── NOTE_DATA injected by process_note.ps1 ──
+const NOTE_DATA = {"date":"2026-04-04","title":"TIA-L2-P1","sections":[{"content":"[高速 TIA 輸入源：光電二極體 (Photodiode) 特性分析]","type":"intro"},{"title":"數學推導","content":"這裡筆記列出了幾個關鍵定義，作為資深工程師，我們不能只背公式，要推導其背後的物理機制。\r\n\r\n**1. 響應度 (Responsivity, $R$) 與波長的關係推導**\r\n筆記中寫了 $R \\triangleq \\text{Induced } I / \\text{Input light power}$，並舉例 1.55μm 的 R 大於 850nm 的 R。為什麼？\r\n*   **Step 1:** 單一光子能量 $E_p$ 由普朗克常數 $h$、光速 $c$ 與波長 $\\lambda$ 決定：\r\n    $E_p = h \\nu = \\frac{h c}{\\lambda}$\r\n*   **Step 2:** 若輸入光功率為 $P_{in}$，每秒入射的光子數 $N_{ph}$ 為：\r\n    $N_{ph} = \\frac{P_{in}}{E_p} = \\frac{P_{in} \\cdot \\lambda}{h c}$\r\n*   **Step 3:** 假設量子效率為 $\\eta$（多少比例的光子能成功激發出電子電洞對），產生的光電流 $I_p$（$q$ 為基本電荷）為：\r\n    $I_p = q \\cdot (\\eta \\cdot N_{ph}) = q \\cdot \\eta \\cdot \\frac{P_{in} \\cdot \\lambda}{h c}$\r\n*   **Step 4:** 整理得到 Responsivity 的終極公式：\r\n    $R = \\frac{I_p}{P_{in}} = \\frac{\\eta \\cdot q \\cdot \\lambda}{h c}$\r\n    *(推導結論：在量子效率 $\\eta$ 相似的情況下，Responsivity $R$ 與波長 $\\lambda$ 成正比。這完美解釋了為何筆記中 $1.55\\mu m$ 的 /*INJECT_NOTE_DATA*/.9 A/W$ 會大於 $850nm$ 的 /*INJECT_NOTE_DATA*/.5 A/W$。因為長波長光子能量低，同樣 1W 功率下光子數量更多，打出的電子也更多。)*\r\n\r\n**2. 為什麼反向偏壓 ($V_{RB}$) 能提升頻寬 (f)？**\r\n筆記左下角圖示 $V_{RB} = -4V$ 的頻寬優於 $V_{RB} = 0V$。\r\n*   **Step 1:** PN 接面的空乏區寬度 $W_{dep}$ 與反向偏壓 $V_R$ 相關：\r\n    $W_{dep} \\propto \\sqrt{V_0 + V_R}$ ($V_0$ 為內建電位)\r\n*   **Step 2:** PD 的寄生接面電容 $C_j$ 視為平行板電容：\r\n    $C_j = \\frac{\\epsilon A}{W_{dep}} \\propto \\frac{1}{\\sqrt{V_0 + V_R}}$\r\n    *(推導結論：反向偏壓 $V_R$ 越大，空乏區越寬，$C_j$ 越小。對於 TIA 而言，輸入極點 $f_{p,in} \\approx \\frac{1}{2\\pi R_{in} (C_j + C_{pad} + C_{TIA})}$，降低 $C_j$ 直接推升了系統的 3dB 頻寬。)*","type":"math"},{"title":"單位解析","content":"**公式單位消去：**\r\n1. **Responsivity ($R$)**:\r\n   $R = \\frac{I_{induced}}{P_{optical}} \\Rightarrow \\frac{[A]}{[W]} = \\mathbf{[A/W]}$\r\n   *(註：在光通訊中，光功率常以 dBm 表示，計算電流時需先轉回 Linear scale 的 Watt。)*\r\n\r\n2. **Extinction Ratio ($ER$)**:\r\n   $ER = \\frac{P_1}{P_0} \\Rightarrow \\frac{[W]}{[W]} = \\mathbf{1 \\ (無因次)}$\r\n   *(註：業界規格通常取 $\\log$ 轉換為 $\\mathbf{[dB]}$，即 $ER_{dB} = 10 \\log_{10}(P_1/P_0)$。)*\r\n\r\n**圖表單位推斷：**\r\n📈 圖表單位推斷（右上：光電二極體 I-V 曲線）：\r\n- **X 軸**：二極體跨壓 $V_D$ **[V]**，典型範圍 **-5V ~ +1V**（SerDes 應用主要操作在第三象限的反向偏壓區，如筆記標示的 -5V）。\r\n- **Y 軸**：電流 $I$ **[μA] 或 [mA]**，典型範圍 **-2mA ~ 0**（取決於入射光功率，光電流方向與 forward current 相反）。\r\n\r\n📈 圖表單位推斷（左下：頻率響應 Responsivity vs. f）：\r\n- **X 軸**：頻率 $f$ **[GHz]**，典型範圍 **0 ~ 50 GHz**（視通訊協定如 25G/50G/112G PAM4 而定）。\r\n- **Y 軸**：交流響應度 magnitude $|R(f)|$ **[A/W] 或正規化的 [dB]**，典型範圍 DC 處為 **0.5 ~ 0.9 A/W**，往高頻遞減。","type":"units"},{"title":"白話物理意義","content":"在 TIA 面前，Photodiode 加上反向偏壓後，就是一個**「帶有寄生電容的高速光控電流源」**；反壓催越大，電容就越小，高頻訊號才不會被電容吃掉。","type":"plain"},{"title":"生活化比喻","content":"光電二極體就像是一座**「太陽能水塔」**。\r\n光（Optical Power）就是驅動抽水馬達的能量，光越強，抽出來的水流（電流）就越大，這轉換效率就是 Responsivity。\r\n而「反向偏壓」就像是水塔排水管的**斜率**。如果斜率是平的（$V_{RB}=0$），水流得慢（載子傳輸慢），且容易積水（寄生電容大）；如果你把排水管弄得很陡（$V_{RB}=-4V$），水一抽上來瞬間就流下去了，反應極快，高頻寬就這樣來了。","type":"analogy"},{"title":"面試必考點","items":[{"question":"在 TIA 系統中，為什麼光電二極體 (PD) 必須施加足夠的反向偏壓 (Reverse Bias)？只加一點點不行嗎？","answer":"** 有兩個致命原因。第一，反向偏壓能擴張空乏區，大幅降低 PD 的接面電容 ($C_j$)，這是提升 TIA 輸入端 RC 頻寬的關鍵。第二，強大的電場能讓光激發的電子電洞對以「飽和漂移速度 (Saturation velocity)」移動，縮短 Transit time。如果不夠大，高頻響應會立刻劣化，眼圖會直接閉合。"},{"question":"如果系統規定使用 1.55μm 而不是 850nm 波長的雷射，對你的 TIA 設計會有什麼好處或挑戰？","answer":"** 好處是 1.55μm 的 Responsivity 較高（例如 0.9 A/W vs 0.5 A/W），同樣的光功率下能產生更大的光電流，提升了 SNR。挑戰在於 1.55μm 通常使用 InGaAs 材質，其寄生電容或暗電流 (Dark current) 可能與 850nm 的 Si/GaAs 系統不同，且較大的輸入電流會吃掉 TIA 更多的電壓餘裕 (Voltage Headroom)，必須注意 TIA 的 overload limit。"},{"question":"光通訊模組規格書上的 Extinction Ratio (ER) 如果太低（例如 $P_0$ 很大），對 TIA 電路設計有什麼毀滅性打擊？","answer":"** ER 太低代表傳送 Logic 0 時仍有很強的背景光，這會產生一個巨大的直流光電流 (DC Photocurrent)。這個 DC 電流不僅不帶訊號資訊，還會佔用 TIA 寶貴的 Voltage Headroom，迫使 TIA 提早進入非線性區或飽和。同時，龐大的 DC 電流會帶來巨大的 Shot Noise，嚴重吃掉系統的 Sensitivity (靈敏度)。"}],"type":"quiz"},{"content":"**「逆壓降C提頻寬，長波光子電流大，消光太低吃餘裕。」**\r\n（反向偏壓降低電容提升頻寬；長波長光子數多所以響應電流大；消光比太低會有過大DC電流佔用電壓餘裕）。","type":"mnemonic"}],"imageUrl":"../images/TIA-L2-P1.jpg"};
+
+// ── Render ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.title = NOTE_DATA.title + ' | SerDes Note';
+  document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
+  document.getElementById('note-title').textContent = NOTE_DATA.title;
+  document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
+  document.getElementById('note-src').textContent = '原始圖片：' + NOTE_DATA.imageUrl;
+
+  const img = document.getElementById('note-img');
+  img.src = NOTE_DATA.imageUrl;
+
+  const container = document.getElementById('sections-container');
+  const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };
+  const labels = { intro:'概覽', math:'數學推導', units:'單位解析', plain:'白話物理意義', analogy:'生活化比喻', quiz:'面試必考點', mnemonic:'記憶口訣', qa:'問題延伸' };
+
+  NOTE_DATA.sections.forEach((sec, i) => {
+    const el = document.createElement('div');
+    el.className = 'section ' + sec.type;
+    el.style.transitionDelay = (i * 0.07) + 's';
+
+    if (sec.type === 'quiz') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${sec.title || labels[sec.type]}</span>
+        </div>
+        <div class="section-body">
+          <div class="quiz-list">
+            ${sec.items.map((q, n) => `
+              <div class="card" data-idx="${n}">
+                <div class="card-q">
+                  <span class="card-num">Q${n+1}</span>
+                  <span class="card-q-text">${escHtml(q.question)}</span>
+                  <span class="card-toggle">▶</span>
+                </div>
+                <div class="card-a">${escHtml(q.answer)}</div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    } else if (sec.type === 'mnemonic') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${escHtml(sec.content)}</div>`;
+    } else if (sec.type === 'units') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${renderUnits(sec.content)}</div>`;
+    } else if (sec.type === 'qa') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${renderQA(sec.items)}</div>`;
+    } else {
+      const title = sec.title || labels[sec.type];
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${title}</span>
+        </div>
+        <div class="section-body">${mdToHtml(sec.content)}</div>`;
+    }
+
+    container.appendChild(el);
+  });
+
+  // KaTeX render
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left:'$$', right:'$$', display:true},
+      {left:'$', right:'$', display:false}
+    ],
+    throwOnError: false
+  });
+
+  // Intersection Observer for reveal
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.section').forEach(s => obs.observe(s));
+
+  // Quiz cards toggle
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('open'));
+  });
+
+  // Lightbox
+  const imgWrap = document.getElementById('img-wrap');
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lb-img');
+  imgWrap.addEventListener('click', () => { lbImg.src = img.src; lb.classList.add('open'); });
+  lb.addEventListener('click', () => lb.classList.remove('open'));
+
+  // Feynman
+  const quizSection = NOTE_DATA.sections.find(s => s.type === 'quiz');
+  const allQ = quizSection ? quizSection.items : [];
+  let fmIdx = 0;
+
+  function openFeynman() {
+    if (!allQ.length) return;
+    fmIdx = Math.floor(Math.random() * allQ.length);
+    showFeynman();
+    document.getElementById('feynman-modal').classList.add('open');
+  }
+
+  function showFeynman() {
+    window._fmIdx = fmIdx;
+    document.getElementById('fm-question').textContent = allQ[fmIdx].question;
+    document.getElementById('fm-input').value = '';
+    const ans = document.getElementById('fm-answer');
+    ans.textContent = allQ[fmIdx].answer;
+    ans.classList.remove('show');
+    renderMathInElement(document.getElementById('fm-question'), { delimiters: [{left:'$',right:'$',display:false},{left:'$$',right:'$$',display:true}], throwOnError:false });
+    renderMathInElement(ans, { delimiters: [{left:'$',right:'$',display:false},{left:'$$',right:'$$',display:true}], throwOnError:false });
+  }
+
+  document.getElementById('feynman-btn').addEventListener('click', openFeynman);
+  document.getElementById('fm-close').addEventListener('click', () => document.getElementById('feynman-modal').classList.remove('open'));
+  document.getElementById('fm-reveal').addEventListener('click', () => document.getElementById('fm-answer').classList.toggle('show'));
+  document.getElementById('fm-next').addEventListener('click', () => {
+    fmIdx = (fmIdx + 1) % allQ.length;
+    showFeynman();
+  });
+});
+
+function renderUnits(text) {
+  // Split into unit-block (公式消去) and chart-infer (圖表推斷) sub-blocks
+  let html = mdToHtml(text);
+  // Wrap lines starting with 📈 in chart-infer div
+  html = html.replace(/<p>(📈[\s\S]*?)<\/p>/g, '<div class="chart-infer">$1</div>');
+  // Wrap lines containing [X] × [Y] style unit derivations in unit-block div
+  html = html.replace(/<p>([^<]*\[[\w\/]+\][^<]*=[^<]*)<\/p>/g, '<div class="unit-block">$1</div>');
+  return html;
+}
+
+function renderQA(items) {
+  if (!items || !items.length) return '<p style="color:var(--dim)">尚無延伸問題</p>';
+  return items.map((q, i) => `
+    <div class="qa-item">
+      <div class="qa-item-q">Q${i+1}：${escHtml(q.question)}</div>
+      <div class="qa-item-a">${mdToHtml(q.answer)}</div>
+    </div>`).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function mdToHtml(text) {
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Numbered list items
+  text = text.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+  text = text.replace(/(<li>.*<\/li>\n?)+/gs, m => '<ol>' + m + '</ol>');
+  // Bullet list items
+  text = text.replace(/^\*\s+(.+)$/gm, '<li>$1</li>');
+  text = text.replace(/(<li>(?!.*<\/ol>).*<\/li>\n?)+/gs, m => '<ul>' + m + '</ul>');
+  // Horizontal rule
+  text = text.replace(/^---$/gm, '<hr style="border-color:var(--dim);margin:0.8rem 0">');
+  // Paragraphs (split by double newline)
+  text = text.split(/\n{2,}/).map(p => {
+    p = p.trim();
+    if (!p || p.startsWith('<ol>') || p.startsWith('<ul>') || p.startsWith('<hr')) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+  return text;
+}
+
+// ════════════════════════════════════════════════
+// Gemini API Integration (免費 tier)
+// ════════════════════════════════════════════════
+
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_API   = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':streamGenerateContent';
+
+function getApiKey() { return localStorage.getItem('gemini_api_key') || ''; }
+function setApiKey(k) { localStorage.setItem('gemini_api_key', k); }
+
+function buildSystemPrompt() {
+  let sys = `你是一位嚴格的 IC 設計助教，專精高速 SerDes / PLL / CDR / TIA 等電路設計（55nm及以下製程）。\n`;
+  sys += `現在的學習筆記：${NOTE_DATA.title}（${NOTE_DATA.date}）\n\n`;
+  sys += `以下是筆記的完整內容：\n`;
+  NOTE_DATA.sections.forEach(sec => {
+    if (sec.type === 'quiz') {
+      sys += `\n## 面試必考點\n`;
+      sec.items.forEach((q, i) => {
+        sys += `Q${i+1}: ${q.question}\nA: ${q.answer}\n`;
+      });
+    } else if (sec.content) {
+      const t = sec.title || ({ intro:'概覽', math:'數學推導', plain:'白話物理意義', analogy:'生活化比喻', mnemonic:'記憶口訣' })[sec.type] || sec.type;
+      sys += `\n## ${t}\n${sec.content}\n`;
+    }
+  });
+  sys += `\n請以繁體中文回答，精準且言簡意賅。`;
+  return sys;
+}
+
+// Gemini 用 "model" 而非 "assistant"
+function toGeminiHistory(messages) {
+  return messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : m.role,
+    parts: [{ text: m.content }]
+  }));
+}
+
+async function streamClaude(messages, onChunk, onDone, onError) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    document.getElementById('apikey-modal').classList.add('open');
+    document.getElementById('apikey-input').focus();
+    if (onError) onError('請先設定 Gemini API Key');
+    return;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(GEMINI_API + '?alt=sse&key=' + encodeURIComponent(apiKey), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: buildSystemPrompt() }] },
+        contents: toGeminiHistory(messages),
+        generationConfig: { maxOutputTokens: 1024 }
+      })
+    });
+  } catch (e) {
+    if (onError) onError('網路錯誤：' + e.message);
+    onDone();
+    return;
+  }
+
+  if (!resp.ok) {
+    let errMsg = resp.statusText;
+    try { const j = await resp.json(); errMsg = j.error?.message || errMsg; } catch {}
+    if (onError) onError('[' + resp.status + '] ' + errMsg);
+    onDone();
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim();
+      if (!d || d === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(d);
+        const text = evt.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) onChunk(text);
+      } catch {}
+    }
+  }
+  onDone();
+}
+
+// ── Theme Toggle ──
+const themeBtn = document.getElementById('theme-btn');
+if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+});
+
+// ── Settings Modal ──
+const settingsBtn   = document.getElementById('settings-btn');
+const apikeyModal   = document.getElementById('apikey-modal');
+const apikeyInput   = document.getElementById('apikey-input');
+const apikeyStatus  = document.getElementById('apikey-status');
+const apikeyClose   = document.getElementById('apikey-close');
+const apikeySave    = document.getElementById('apikey-save');
+
+settingsBtn.addEventListener('click', () => {
+  apikeyInput.value = getApiKey();
+  apikeyStatus.textContent = getApiKey() ? '✓ 已設定' : '尚未設定';
+  apikeyStatus.className = 'apikey-status ' + (getApiKey() ? 'ok' : 'err');
+  apikeyModal.classList.add('open');
+});
+apikeyClose.addEventListener('click', () => apikeyModal.classList.remove('open'));
+apikeySave.addEventListener('click', () => {
+  const k = apikeyInput.value.trim();
+  if (!k) { apikeyStatus.textContent = '請輸入 API Key'; apikeyStatus.className = 'apikey-status err'; return; }
+  setApiKey(k);
+  settingsBtn.classList.add('active');
+  apikeyStatus.textContent = '✓ 已儲存';
+  apikeyStatus.className = 'apikey-status ok';
+  setTimeout(() => apikeyModal.classList.remove('open'), 700);
+});
+apikeyInput.addEventListener('keydown', e => { if (e.key === 'Enter') apikeySave.click(); });
+if (getApiKey()) settingsBtn.classList.add('active');
+
+// ── Chat Panel ──
+const chatBtn      = document.getElementById('chat-btn');
+const chatPanel    = document.getElementById('chat-panel');
+const chatClose    = document.getElementById('chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput    = document.getElementById('chat-input');
+const chatSend     = document.getElementById('chat-send');
+
+let chatHistory = [];
+let chatStreaming = false;
+
+chatBtn.addEventListener('click', () => chatPanel.classList.toggle('open'));
+chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
+
+function appendChatMsg(role, text) {
+  const empty = chatMessages.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const q = chatInput.value.trim();
+  if (!q || chatStreaming) return;
+  chatInput.value = '';
+  chatStreaming = true;
+  chatSend.disabled = true;
+
+  chatHistory.push({ role: 'user', content: q });
+  appendChatMsg('user', q);
+
+  const aiDiv = appendChatMsg('ai', '');
+  let buf = '';
+
+  await streamClaude(
+    chatHistory,
+    (chunk) => {
+      buf += chunk;
+      aiDiv.textContent = buf;
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    },
+    () => {
+      chatHistory.push({ role: 'assistant', content: buf });
+      chatStreaming = false;
+      chatSend.disabled = false;
+      chatInput.focus();
+    },
+    (err) => {
+      aiDiv.textContent = '⚠ ' + err;
+      chatStreaming = false;
+      chatSend.disabled = false;
+    }
+  );
+}
+
+chatSend.addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+
+// ── AI Score in Feynman ──
+const fmAiScore    = document.getElementById('fm-ai-score');
+const aiFeedback   = document.getElementById('ai-feedback');
+const aiFeedbackTx = document.getElementById('ai-feedback-text');
+let aiScoring = false;
+
+fmAiScore.addEventListener('click', async () => {
+  const q = document.getElementById('fm-question').textContent;
+  const userAns = document.getElementById('fm-input').value.trim();
+  const correctAns = document.getElementById('fm-answer').textContent ||
+    (NOTE_DATA.sections.find(s => s.type === 'quiz')?.items[window._fmIdx || 0]?.answer || '');
+
+  if (!userAns) {
+    aiFeedbackTx.textContent = '請先輸入你的答案。';
+    aiFeedback.classList.add('show');
+    return;
+  }
+  if (aiScoring) return;
+  aiScoring = true;
+  fmAiScore.disabled = true;
+
+  aiFeedbackTx.textContent = '評分中...';
+  aiFeedback.classList.add('show');
+  let buf = '';
+
+  const evalMessages = [{
+    role: 'user',
+    content: `問題：${q}\n\n學生的回答：${userAns}\n\n參考答案：${correctAns}\n\n請評分（1-10分）並給出具體改進建議，說明哪裡答對了、哪裡還不夠精確。請用繁體中文，簡潔有力。`
+  }];
+
+  await streamClaude(
+    evalMessages,
+    (chunk) => {
+      buf += chunk;
+      aiFeedbackTx.textContent = buf;
+    },
+    () => {
+      aiScoring = false;
+      fmAiScore.disabled = false;
+    },
+    (err) => {
+      aiFeedbackTx.textContent = '⚠ ' + err;
+      aiScoring = false;
+      fmAiScore.disabled = false;
+    }
+  );
+});
+
+// reset AI feedback when question changes
+const origShowFeynman = window._showFeynmanOrig;
+document.getElementById('fm-next').addEventListener('click', () => {
+  aiFeedback.classList.remove('show');
+  aiFeedbackTx.textContent = '';
+  fmAiScore.disabled = false;
+  aiScoring = false;
+}, true);
+document.getElementById('fm-close').addEventListener('click', () => {
+  aiFeedback.classList.remove('show');
+  aiScoring = false;
+  fmAiScore.disabled = false;
+}, true);
+</script>
+</body>
+</html>
