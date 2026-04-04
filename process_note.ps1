@@ -199,17 +199,14 @@ foreach ($ImageFile in $ImageFiles) {
     }
 
     # ── Step 1：識別標題 ────────────────────────────────────
-    if ($BaseName -match '^[A-Z]{2,10}-L\d+-P\d+$') {
+    if ($Name) {
+        $NoteName = $Name
+        Write-Host "[1/4] 使用 -Name 指定標題：$NoteName" -ForegroundColor DarkGray
+    } elseif ($BaseName -match '^[A-Z]{2,10}-L\d+-P\d+$') {
         $NoteName = $BaseName
         Write-Host "[1/4] 檔名已符合格式，跳過 Gemini：$NoteName" -ForegroundColor DarkGray
     } else {
-        Write-Host "[1/4] 識別筆記標題..." -ForegroundColor Yellow
-        $TitlePrompt = "請只回答這張筆記右上角的標題文字，不要加任何其他說明。格式範例：PLL-L1-P1"
-        $RawTitle = & gemini -p "$TitlePrompt @$ImagePath" 2>$null | Out-String
-        $titleMatch = [regex]::Match($RawTitle, '[A-Z]{2,10}-L\d+-P\d+')
-        $NoteName = if ($titleMatch.Success) {
-            $titleMatch.Value -replace '[\\/:*?"<>|]', '-'
-        } else { "" }
+        $NoteName = ""
     }
 
     if (-not $NoteName) {
@@ -241,7 +238,36 @@ foreach ($ImageFile in $ImageFiles) {
     Write-Host "[2/4] Gemini 分析筆記中..." -ForegroundColor Cyan
     $Prompt = Get-Content $PromptPath -Raw -Encoding UTF8
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    $Result = & gemini -p "$Prompt @$NewImagePath" 2>$null | Out-String
+    Start-Sleep -Seconds 5
+    $Result = & gemini -p "$Prompt @$NewImagePath" 2>&1 | Out-String
+
+    if ($Result.Trim().Length -lt 50) {
+        Write-Host "  Gemini 回傳內容太短，跳過（可能 rate limit）" -ForegroundColor Red
+        Move-Item $NewImagePath $ImagePath -Force -ErrorAction SilentlyContinue
+        $failed++
+        continue
+    }
+
+    # 從第一行抽取標題（若 -Name 或檔名已確定則忽略）
+    $firstLine = ($Result -split "`n")[0].Trim()
+    if (-not $Name -and -not ($BaseName -match '^[A-Z]{2,10}-L\d+-P\d+$')) {
+        $titleMatch = [regex]::Match($firstLine, 'TITLE:\s*([A-Z]{2,10}-L\d+-P\d+)')
+        if ($titleMatch.Success) {
+            $NoteName = $titleMatch.Groups[1].Value
+            Write-Host "  Gemini 識別標題：$NoteName" -ForegroundColor Green
+            # 更新圖片路徑（需 rename）
+            $correctedImagePath = Join-Path $ProjectRoot "images\$NoteName.jpg"
+            if ($NewImagePath -ne $correctedImagePath) {
+                Move-Item $NewImagePath $correctedImagePath -Force
+                $NewImagePath = $correctedImagePath
+            }
+            # 更新 OutputPath
+            $OutputPath = Join-Path $NotesDir "$NoteName.md"
+            $HtmlPath   = Join-Path $NotesDir "$NoteName.html"
+        }
+    }
+    # 移除第一行的 TITLE: 行
+    $Result = ($Result -split "`n" | Select-Object -Skip 1) -join "`n"
 
     $Header = "# $NoteName`n`n> 分析日期：$(Get-Date -Format 'yyyy-MM-dd')`n> 原始圖片：images/$NoteName.jpg`n`n---`n`n"
     $utf8 = New-Object System.Text.UTF8Encoding $false
