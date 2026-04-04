@@ -2,4 +2,10 @@
 node_modules/
 .env
 images/private/
+images/IMG_*.jpg
+images/IMG_*.JPG
+images/IMG_*.jpeg
+images/IMG_*.JPEG
 notes/private/
+notes/IMG_*.md
+notes/IMG_*.html
