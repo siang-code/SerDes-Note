@@ -986,11 +986,13 @@ function mdToHtml(text) {
   // Bold
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   // Numbered list items
-  text = text.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
-  text = text.replace(/(<li>.*<\/li>\n?)+/gs, m => '<ol>' + m + '</ol>');
+  text = text.replace(/^(\d+)\.\s+(.+)$/gm, '<li data-ol>$2</li>');
   // Bullet list items
-  text = text.replace(/^\*\s+(.+)$/gm, '<li>$1</li>');
-  text = text.replace(/(<li>(?!.*<\/ol>).*<\/li>\n?)+/gs, m => '<ul>' + m + '</ul>');
+  text = text.replace(/^\*\s+(.+)$/gm, '<li data-ul>$1</li>');
+  // Wrap ol items
+  text = text.replace(/(<li data-ol>[^\n]*\n?)+/g, m => '<ol>' + m.replace(/ data-ol/g,'') + '</ol>');
+  // Wrap ul items
+  text = text.replace(/(<li data-ul>[^\n]*\n?)+/g, m => '<ul>' + m.replace(/ data-ul/g,'') + '</ul>');
   // Horizontal rule
   text = text.replace(/^---$/gm, '<hr style="border-color:var(--dim);margin:0.8rem 0">');
   // Paragraphs (split by double newline)
