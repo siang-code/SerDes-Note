@@ -35,8 +35,14 @@ Get-ChildItem (Join-Path $NotesDir "*.md") | Where-Object { $_.Name -ne "templat
     }
 }
 
-# 依 prefix 排序，再依 name 排序
-$notes = $notes | Sort-Object { $_.prefix }, { $_.name }
+# 依 prefix 排序，再依 L 號（數字）排序
+$notes = $notes | Sort-Object { $_.prefix }, {
+    if ($_.name -match '-L(\d+)-P(\d+)') {
+        [int]$matches[1] * 1000 + [int]$matches[2]
+    } else {
+        999999
+    }
+}
 
 # 按 prefix 分群
 $groups = [ordered]@{}
