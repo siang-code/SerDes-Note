@@ -56,8 +56,10 @@ if ($Name -and $ImageFiles.Count -gt 1) {
     Write-Host "════════════════════════════════════" -ForegroundColor DarkGray
 
     $NoteName   = $Name
-    $OutputPath = Join-Path $ProjectRoot "notes\$NoteName.md"
-    $HtmlPath   = Join-Path $ProjectRoot "notes\$NoteName.html"
+    $NotesDir   = if ($Local) { Join-Path $ProjectRoot "notes\private" } else { Join-Path $ProjectRoot "notes" }
+    New-Item -ItemType Directory -Path $NotesDir -Force | Out-Null
+    $OutputPath = Join-Path $NotesDir "$NoteName.md"
+    $HtmlPath   = Join-Path $NotesDir "$NoteName.html"
     $utf8       = New-Object System.Text.UTF8Encoding $false
 
     # 驗證所有圖片存在，收集路徑與 rename
@@ -225,7 +227,9 @@ foreach ($ImageFile in $ImageFiles) {
         Write-Host "  自動編號：$NoteName" -ForegroundColor DarkCyan
     }
 
-    $OutputPath = Join-Path $ProjectRoot "notes\$NoteName.md"
+    $NotesDir   = if ($Local) { Join-Path $ProjectRoot "notes\private" } else { Join-Path $ProjectRoot "notes" }
+    New-Item -ItemType Directory -Path $NotesDir -Force | Out-Null
+    $OutputPath = Join-Path $NotesDir "$NoteName.md"
 
     # ── Step 2：重新命名圖片 & Gemini 分析 ─────────────────
     $NewImagePath = Join-Path $ProjectRoot "images\$NoteName.jpg"
@@ -246,7 +250,7 @@ foreach ($ImageFile in $ImageFiles) {
 
     # ── Step 2.5：生成互動 HTML ─────────────────────────────
     Write-Host "[2.5/4] 生成互動 HTML..." -ForegroundColor Cyan
-    $HtmlPath   = Join-Path $ProjectRoot "notes\$NoteName.html"
+    $HtmlPath   = Join-Path $NotesDir "$NoteName.html"
     $mdContent  = [System.IO.File]::ReadAllText($OutputPath, [System.Text.Encoding]::UTF8)
 
     function Get-Section($text, $heading) {
