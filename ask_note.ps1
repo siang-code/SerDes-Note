@@ -44,7 +44,9 @@ $Question
 $tmpPrompt = Join-Path $ProjectRoot "ask_note_prompt.txt"
 [System.IO.File]::WriteAllText($tmpPrompt, $prompt, [System.Text.Encoding]::UTF8)
 
+$OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
 $answer = & gemini -p "@$tmpPrompt" 2>$null | Out-String
 
 if (-not $answer.Trim()) {

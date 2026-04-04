@@ -29,7 +29,7 @@ $NotionHeaders = @{
 
 # ── 決定要處理哪些圖片 ──────────────────────────────────────
 if ($All) {
-    $ImageFiles = Get-ChildItem (Join-Path $ProjectRoot "images\*.jpg") |
+    $ImageFiles = Get-ChildItem -Path (Join-Path $ProjectRoot "images") -Include "*.jpg","*.jpeg","*.JPG","*.JPEG","*.png","*.PNG" -File |
         Select-Object -ExpandProperty Name
 } elseif (-not $ImageFiles) {
     Write-Error "請指定圖片檔名，或使用 -All 處理全部"
@@ -59,7 +59,7 @@ foreach ($ImageFile in $ImageFiles) {
     $TitlePrompt = "請只回答這張筆記右上角的標題文字，不要加任何其他說明。格式範例：PLL-L1-P1"
     $RawTitle = & gemini -p "$TitlePrompt @$ImagePath" 2>$null | Out-String
     $titleLines = ($RawTitle -split "`n").Trim() | Where-Object {
-        $_ -ne "" -and $_ -match '^[A-Za-z0-9]' -and $_ -notmatch 'node\.exe|NativeCommandError|Attempt \d+ failed'
+        $_ -match '^[A-Z]{2,10}-L\d+-P\d+$'
     }
     $NoteName = if ($titleLines) {
         ($titleLines | Select-Object -Last 1) -replace '[\\/:*?"<>|]', '-'
@@ -82,11 +82,9 @@ foreach ($ImageFile in $ImageFiles) {
 
     # ── Step 2：重新命名圖片 & Gemini 分析 ─────────────────
     $NewImagePath = Join-Path $ProjectRoot "images\$NoteName.jpg"
-    if ($ImagePath -ne $NewImagePath -and -not (Test-Path $NewImagePath)) {
+    if ($ImagePath -ne $NewImagePath) {
         Move-Item $ImagePath $NewImagePath -Force
         Write-Host "  圖片重新命名：$NoteName.jpg" -ForegroundColor Green
-    } else {
-        $NewImagePath = $ImagePath
     }
 
     Write-Host "[2/4] Gemini 分析筆記中..." -ForegroundColor Cyan
@@ -165,6 +163,8 @@ foreach ($ImageFile in $ImageFiles) {
 
     # ── Step 3：同步到 Google Drive ─────────────────────────
     Write-Host "[3/4] 同步到 Google Drive..." -ForegroundColor Magenta
+    New-Item -ItemType Directory -Path (Join-Path $GDriveRoot "images") -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $GDriveRoot "notes")  -Force | Out-Null
     Copy-Item $NewImagePath (Join-Path $GDriveRoot "images\$NoteName.jpg") -Force
     Copy-Item $OutputPath   (Join-Path $GDriveRoot "notes\$NoteName.md")   -Force
     Copy-Item $HtmlPath     (Join-Path $GDriveRoot "notes\$NoteName.html") -Force
