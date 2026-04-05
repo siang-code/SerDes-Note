@@ -476,7 +476,8 @@ if ($done -gt 0 -and -not $Local) {
 
 # ── 最終摘要 ────────────────────────────────────────────────
 $elapsed = (Get-Date) - $startTime
-$elapsedStr = "{0:mm}m {0:ss}s" -f $elapsed
+$elapsedStr = "$([int]$elapsed.TotalHours)h $($elapsed.Minutes)m $($elapsed.Seconds)s"
+if ($elapsed.TotalHours -lt 1) { $elapsedStr = "$($elapsed.Minutes)m $($elapsed.Seconds)s" }
 Write-Host "`n════════════════════════════════════" -ForegroundColor White
 Write-Host " 全部完成！" -ForegroundColor Green
 Write-Host "  處理：$done　跳過：$skipped　失敗：$failed　共：$total" -ForegroundColor Cyan
