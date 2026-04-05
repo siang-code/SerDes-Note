@@ -982,6 +982,8 @@ function escHtml(s) {
 }
 
 function mdToHtml(text) {
+  // Images
+  text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:6px;margin:0.5rem 0">');
   // Bold
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   // Numbered list items

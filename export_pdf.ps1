@@ -47,6 +47,9 @@ foreach ($MdFile in $MdFiles) {
     $PdfPath   = Join-Path $PdfDir "$BaseName.pdf"
     $TmpHtml   = Join-Path $TmpDir "$BaseName.html"
     $ImgPath   = Join-Path $ImagesDir "$BaseName.jpg"
+    if (-not (Test-Path $ImgPath)) {
+        $ImgPath = Join-Path $ImagesDir "done\$BaseName.jpg"
+    }
 
     Write-Host "[$($Success+1)/$Total] $BaseName ..." -ForegroundColor Yellow
 
@@ -61,12 +64,28 @@ foreach ($MdFile in $MdFiles) {
         $imgTag    = "<img src='data:image/jpeg;base64,$imgBase64' style='max-width:100%;margin-bottom:24px;'>"
     }
 
-    # Escape MD text for HTML
+    # Escape MD text for HTML first
     $htmlText = $mdText `
         -replace '&', '&amp;' `
         -replace '<', '&lt;' `
         -replace '>', '&gt;' `
         -replace "`n", '<br>'
+
+    # Then convert inline markdown images ![alt](path) to base64 <img>
+    $htmlText = [regex]::Replace($htmlText, '!\[([^\]]*)\]\(([^)]+)\)', {
+        param($m)
+        $altText  = $m.Groups[1].Value
+        $imgSrc   = $m.Groups[2].Value
+        $absPath  = [System.IO.Path]::GetFullPath((Join-Path $NotesDir $imgSrc))
+        if (Test-Path $absPath) {
+            $bytes  = [System.IO.File]::ReadAllBytes($absPath)
+            $b64    = [Convert]::ToBase64String($bytes)
+            $ext    = [System.IO.Path]::GetExtension($absPath).TrimStart('.').ToLower()
+            if ($ext -eq 'jpg') { $ext = 'jpeg' }
+            return "<img src='data:image/$ext;base64,$b64' alt='$altText' style='max-width:100%;margin:8px 0;border:1px solid #ccc;'>"
+        }
+        return $m.Value
+    })
 
     # Build simple print-friendly HTML
     $html = @"

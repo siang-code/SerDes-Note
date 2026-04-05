@@ -133,12 +133,6 @@ if ($Name -and $ImageFiles.Count -gt 1) {
     $introTitle = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
     $introBody  = if ($h2Match.Success) { $h2Match.Groups[2].Value.Trim() } else { "" }
     $intro      = if ($introBody) { "$introTitle`n`n$introBody" } else { $introTitle }
-    $mathSec    = Get-Section $mdContent "數學推導"
-    $unitsSec   = Get-Section $mdContent "單位解析"
-    $plainSec   = Get-Section $mdContent "白話物理意義"
-    $analogySec = Get-Section $mdContent "生活化比喻"
-    $quizText   = Get-Section $mdContent "面試必考點"
-    $quizItems  = Get-QuizItems $quizText
     $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=(\r?\n){1,3}---|\s*\r?\n### |\z)')
     $mnemonic   = if ($mnMatch.Success) { $mnMatch.Groups[1].Value.Trim() } else { "" }
     $qaItems    = [System.Collections.Generic.List[hashtable]]::new()
@@ -146,15 +140,28 @@ if ($Name -and $ImageFiles.Count -gt 1) {
     foreach ($m in $qaMatches) {
         $qaItems.Add(@{ question = $m.Groups[1].Value.Trim(); answer = $m.Groups[2].Value.Trim() })
     }
-    $sections = @(
-        @{ type="intro";    content=$intro }
-        @{ type="math";     title="數學推導";     content=$mathSec }
-        @{ type="units";    title="單位解析";     content=$unitsSec }
-        @{ type="plain";    title="白話物理意義"; content=$plainSec }
-        @{ type="analogy";  title="生活化比喻";   content=$analogySec }
-        @{ type="quiz";     title="面試必考點";   items=@($quizItems) }
-        @{ type="mnemonic"; content=$mnemonic }
-    )
+    $knownTypes = @{
+        '數學推導'     = 'math'
+        '單位解析'     = 'units'
+        '白話物理意義' = 'plain'
+        '生活化比喻'   = 'analogy'
+        '面試必考點'   = 'quiz'
+    }
+    $allSections = [regex]::Matches($mdContent, "### ([^\r\n]+)\s*\r?\n([\s\S]*?)(?=\r?\n### |\r?\n## |\*\*記憶|\z)")
+    $sections = @( @{ type="intro"; content=$intro } )
+    foreach ($sec in $allSections) {
+        $secTitle   = $sec.Groups[1].Value.Trim()
+        $secContent = $sec.Groups[2].Value.Trim()
+        if ($secTitle -eq '問題延伸') { continue }
+        $secType = if ($knownTypes.ContainsKey($secTitle)) { $knownTypes[$secTitle] } else { 'math' }
+        if ($secType -eq 'quiz') {
+            $quizItems = Get-QuizItems $secContent
+            $sections += @{ type="quiz"; title=$secTitle; items=@($quizItems) }
+        } else {
+            $sections += @{ type=$secType; title=$secTitle; content=$secContent }
+        }
+    }
+    if ($mnemonic) { $sections += @{ type="mnemonic"; content=$mnemonic } }
     if ($qaItems.Count -gt 0) {
         $sections += @{ type="qa"; title="問題延伸"; items=@($qaItems) }
     }
@@ -302,12 +309,6 @@ foreach ($ImageFile in $ImageFiles) {
     $introTitle = if ($h2Match.Success) { $h2Match.Groups[1].Value.Trim() } else { "" }
     $introBody  = if ($h2Match.Success) { $h2Match.Groups[2].Value.Trim() } else { "" }
     $intro      = if ($introBody) { "$introTitle`n`n$introBody" } else { $introTitle }
-    $mathSec    = Get-Section $mdContent "數學推導"
-    $unitsSec   = Get-Section $mdContent "單位解析"
-    $plainSec   = Get-Section $mdContent "白話物理意義"
-    $analogySec = Get-Section $mdContent "生活化比喻"
-    $quizText   = Get-Section $mdContent "面試必考點"
-    $quizItems  = Get-QuizItems $quizText
     $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=(\r?\n){1,3}---|\s*\r?\n### |\z)')
     $mnemonic   = if ($mnMatch.Success) { $mnMatch.Groups[1].Value.Trim() } else { "" }
 
@@ -318,16 +319,28 @@ foreach ($ImageFile in $ImageFiles) {
         $qaItems.Add(@{ question = $m.Groups[1].Value.Trim(); answer = $m.Groups[2].Value.Trim() })
     }
 
-    $sections = @(
-        @{ type="intro";    content=$intro }
-        @{ type="math";     title="數學推導";     content=$mathSec }
-        @{ type="units";    title="單位解析";     content=$unitsSec }
-        @{ type="plain";    title="白話物理意義"; content=$plainSec }
-        @{ type="analogy";  title="生活化比喻";   content=$analogySec }
-        @{ type="quiz";     title="面試必考點";   items=@($quizItems) }
-        @{ type="mnemonic"; content=$mnemonic }
-    )
-    # 只在有 Q&A 時才加入
+    $knownTypes = @{
+        '數學推導'     = 'math'
+        '單位解析'     = 'units'
+        '白話物理意義' = 'plain'
+        '生活化比喻'   = 'analogy'
+        '面試必考點'   = 'quiz'
+    }
+    $allSections = [regex]::Matches($mdContent, "### ([^\r\n]+)\s*\r?\n([\s\S]*?)(?=\r?\n### |\r?\n## |\*\*記憶|\z)")
+    $sections = @( @{ type="intro"; content=$intro } )
+    foreach ($sec in $allSections) {
+        $secTitle   = $sec.Groups[1].Value.Trim()
+        $secContent = $sec.Groups[2].Value.Trim()
+        if ($secTitle -eq '問題延伸') { continue }
+        $secType = if ($knownTypes.ContainsKey($secTitle)) { $knownTypes[$secTitle] } else { 'math' }
+        if ($secType -eq 'quiz') {
+            $quizItems = Get-QuizItems $secContent
+            $sections += @{ type="quiz"; title=$secTitle; items=@($quizItems) }
+        } else {
+            $sections += @{ type=$secType; title=$secTitle; content=$secContent }
+        }
+    }
+    if ($mnemonic) { $sections += @{ type="mnemonic"; content=$mnemonic } }
     if ($qaItems.Count -gt 0) {
         $sections += @{ type="qa"; title="問題延伸"; items=@($qaItems) }
     }
