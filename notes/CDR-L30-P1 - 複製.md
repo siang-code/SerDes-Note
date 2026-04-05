@@ -36,36 +36,13 @@
     *   化簡得到最終神之公式：
         $J_{rms} (UI) = \frac{f_0}{2\pi} \left[ 2 \cdot S_{\phi,vco}(f_0) \cdot \frac{\pi}{2 f_{BW}} \right]^{1/2} = \frac{f_0}{2\pi} \sqrt{\frac{\pi \cdot S_{\phi,vco}(f_0)}{f_{BW}}} = \mathbf{\frac{f_0}{2} \sqrt{\frac{S_{\phi,vco}(f_0)}{\pi \cdot f_{BW}}}}$
 
-**重新驗證：$f_{BW} = 10\text{ MHz}$**
-
-1. **正確數值代入：**
-   * 條件：$f_{BW} = 10\text{ MHz} = 10^7\text{ Hz}$，目標 $J_{rms} = 0.01\text{ UI}$，評估點 $f_0 = 1\text{ MHz} = 10^6\text{ Hz}$。
-   * 套用神之公式：
-   $$0.01 = \frac{10^6}{2} \sqrt{\frac{S_{\phi,vco}}{\pi \cdot 10^7}}$$
-
-2. **精準計算：**
-   * 移項：
-   $$2 \times 10^{-8} = \sqrt{\frac{S_{\phi,vco}}{\pi \cdot 10^7}}$$
-   * 兩邊平方：
-   $$4 \times 10^{-16} = \frac{S_{\phi,vco}}{\pi \cdot 10^7}$$
-   * 求出 $S_{\phi,vco}$：
-   $$S_{\phi,vco} = 4\pi \times 10^{-9} \approx \mathbf{1.256 \times 10^{-8} \text{ [rad}^2\text{/Hz]}}$$
-   *(完全精準命中你筆記上的 $1.25 \cdot 10^{-8}$！)*
-
-3. **轉換為 Phase Noise (dBc/Hz)：**
-   * 依照筆記上的直接對數定義：
-   $$\mathcal{L}(1\text{MHz}) = 10 \log_{10}(1.256 \times 10^{-8}) \approx \mathbf{-79.01 \text{ dBc/Hz}}$$
-
----
-
-**補充：關於 -79 dBc/Hz 的實務小細節 (Senior Engineer View)**
-
-你的算式跟邏輯完全符合李致毅老師的課堂脈絡，面試時這樣寫絕對能拿到滿分。不過在業界實務上，有一點可以當作你的隱藏武器：
-
-實務上 IEEE 定義的單邊帶相位雜訊 $\mathcal{L}(f)$ 為 $S_{\phi}(f)/2$。如果按照這個嚴格定義來轉換：
-$$\mathcal{L}(1\text{MHz}) = 10 \log_{10}\left(\frac{1.256 \times 10^{-8}}{2}\right) = 10 \log_{10}(6.28 \times 10^{-9}) \approx \mathbf{-82 \text{ dBc/Hz}}$$
-
-這中間差了 **3 dB** (也就是除以 2 的能量)。課堂筆記通常為了直觀，會直接將 $S_{\phi}$ 視為單邊帶能量並取 $10\log_{10}$ 算出 -79 dBc/Hz。面試時如果被問到細節，你可以補充：「根據課堂簡化推導為 -79 dBc/Hz，但若考慮 SSB 相位雜訊嚴謹的定義 $\mathcal{L}(f) = S_{\phi}/2$，VCO 的規格實際上會落在 -82 dBc/Hz 左右。」這句話一出來，面試官絕對會對你的觀念深度印象深刻！
+4.  **數值代入與「抓漏」：**
+    *   條件：$f_{BW} = 1\text{ MHz}$, 目標 $J_{rms} = 0.01\text{ UI}$, 評估點 $f_0 = 1\text{ MHz}$。
+    *   $0.01 = \frac{10^6}{2} \sqrt{\frac{S_{\phi,vco}}{\pi \cdot 10^6}} \Rightarrow 10^{-2} = 5 \times 10^5 \cdot \sqrt{\frac{S_{\phi,vco}}{\pi \cdot 10^6}}$
+    *   移項：$\frac{10^{-2}}{5 \times 10^5} = 2 \times 10^{-8} = \sqrt{\frac{S_{\phi,vco}}{\pi \cdot 10^6}}$
+    *   兩邊平方：$4 \times 10^{-16} = \frac{S_{\phi,vco}}{\pi \cdot 10^6} \Rightarrow S_{\phi,vco} = 4\pi \times 10^{-10} \approx \mathbf{1.256 \times 10^{-9} \text{ [rad}^2\text{/Hz]}}$
+    *   **⚠️ 助教開噴：** 你的筆記寫 $S_{\phi,vco} = 1.25 \times 10^{-8}$，整整差了 10 倍！面試時算錯這個，VCO 設計難度直接放寬一個數量級，晶片做出來會動不起來！
+    *   正確的 Phase Noise 應為：$\mathcal{L}(1\text{MHz}) \approx 10 \log_{10}(S_{\phi,vco}/2) = 10 \log_{10}(6.28 \times 10^{-10}) \approx \mathbf{-92\text{ dBc/Hz}}$ (你的筆記寫 -79 dBc/Hz 是基於算錯的數值且未除以2)。
 
 ### 單位解析
 **公式單位消去：**
@@ -105,7 +82,67 @@ VCO 就像一個**手會一直抖的攝影師**，CDR 環路就像**防手震穩
 
 ### 問題延伸
 
-#### 
+#### Q：你在移項：
+1
+0
+−
+2
+5
+×
+1
+0
+5
+=
+2
+×
+1
+0
+−
+8
+=
+S
+ϕ
+,
+v
+c
+o
+π
+⋅
+1
+0
+6
+5×10 
+5
+ 
+10 
+−2
+ 
+​
+ =2×10 
+−8
+ = 
+π⋅10 
+6
+ 
+S 
+ϕ,vco
+​
+ 
+​
+ 
+​
+ 你自己移項有問題怪我?
+> 提問時間：2026-04-05 12:09
+
+1. **直接回答問題：助教的移項沒有錯，是你誤解了運算順序與基本代數。**
+助教原本寫的是一個完整的「分數」，分母為 $5 \times 10^5$。正確的移項計算是 $10^{-2} \div (5 \times 10^5) = 2 \times 10^{-8}$。
+你如果把它看成 `10^-2 / 5 * 10^5` 並用計算機由左至右按，會算出 $(10^{-2} \div 5) \times 10^5 = 200$，這是經典的先後運算順序錯誤（Order of Operations），助教的移項完全正確。
+
+此外，你筆記上算出的 $1.25 \times 10^{-8}$，很可能是你在計算 $(2 \times 10^{-8})^2$ 時粗心少算了一個零，錯算成 $4 \times 10^{-15}$，導致後續乘上 $\pi \cdot 10^6$ 時剛好得出 $1.256 \times 10^{-8}$（差了整整 10 倍）。若把你的答案代回公式，系統的 Jitter 會是 0.0316 UI，晶片直接規格不符 (Fail)。
+
+2. **物理意義與電路設計考量：相噪差 10 倍，等同於功耗差 10 倍。**
+在類比 IC 設計中，$10$ 倍的 Phase Noise 差距等同於 $10\text{ dBc/Hz}$ 的惡化。根據 VCO 的 Figure of Merit (FoM)，在相同的震盪頻率與 Offset 頻率下，Phase Noise 與功耗 ($P_{DC}$) 成反比。
+為了彌補這算錯的 $10\text{ dB}$，你在電路實作上必須把 VCO 的核心功耗暴力放大 $10$ 倍！在先進製程（如 55nm 及以下）中，VDD 通常很低（例如 1.2V 甚至 0.8V），電流拉大 10 倍會需要極大的電晶體尺寸 (W/L)，這不僅導致寄生電容暴增、嚴重壓縮可調頻率範圍 (Tuning Range)，還會面臨嚴格的金屬線電遷移 (Electromigration, EM) 限制，甚至直接吃掉整顆晶片的 Power Budget。
 
 3. **如果跟面試有關，面試官可能會追問的方向：**
 如果你在白板題發生這種數量級失誤，面試官一定會立刻進行壓力測試，看你怎麼用 Engineering Sense 補救：

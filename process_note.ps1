@@ -139,7 +139,7 @@ if ($Name -and $ImageFiles.Count -gt 1) {
     $analogySec = Get-Section $mdContent "生活化比喻"
     $quizText   = Get-Section $mdContent "面試必考點"
     $quizItems  = Get-QuizItems $quizText
-    $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=\r?\n---|\z)')
+    $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=(\r?\n){1,3}---|\s*\r?\n### |\z)')
     $mnemonic   = if ($mnMatch.Success) { $mnMatch.Groups[1].Value.Trim() } else { "" }
     $qaItems    = [System.Collections.Generic.List[hashtable]]::new()
     $qaMatches  = [regex]::Matches($mdContent, '(?ms)#### Q：(.+?)\r?\n([\s\S]*?)(?=#### Q：|\z)')
@@ -308,7 +308,7 @@ foreach ($ImageFile in $ImageFiles) {
     $analogySec = Get-Section $mdContent "生活化比喻"
     $quizText   = Get-Section $mdContent "面試必考點"
     $quizItems  = Get-QuizItems $quizText
-    $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=\r?\n---|\z)')
+    $mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=(\r?\n){1,3}---|\s*\r?\n### |\z)')
     $mnemonic   = if ($mnMatch.Success) { $mnMatch.Groups[1].Value.Trim() } else { "" }
 
     # 問題延伸（由 ask_note.ps1 附加）

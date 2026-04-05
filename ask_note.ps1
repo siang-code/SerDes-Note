@@ -26,7 +26,7 @@ $mdContent = [System.IO.File]::ReadAllText($MdPath, [System.Text.Encoding]::UTF8
 
 Write-Host "[2/3] Gemini 回答中..." -ForegroundColor Cyan
 $prompt = @"
-你是一位熟悉先進製程（55nm及以下）和成熟製程（0.18µm等）的資深類比 IC 設計工程師。
+你是一位熟悉先進製程（55nm及以下）和成熟製程（0.18µm等）的資深類比 IC 設計工程師，專長是高速 SerDes 前端開發，包含 TIA、EQ、LA、RX、PLL、CDR 等架構設計與物理特性分析。
 以下是學生的筆記內容，請根據這份筆記的 context 回答學生的問題。
 
 【筆記內容】

@@ -37,7 +37,7 @@ $plainSec   = Get-Section $mdContent "白話物理意義"
 $analogySec = Get-Section $mdContent "生活化比喻"
 $quizText   = Get-Section $mdContent "面試必考點"
 $quizItems  = Get-QuizItems $quizText
-$mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=\r?\n---|\z)')
+$mnMatch    = [regex]::Match($mdContent, '\*\*記憶口訣[：:]\*\*\s*\r?\n([\s\S]+?)(?=(\r?\n){1,3}---|\s*\r?\n### |\z)')
 $mnemonic   = if ($mnMatch.Success) { $mnMatch.Groups[1].Value.Trim() } else { "" }
 
 # 問題延伸
