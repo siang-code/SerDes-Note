@@ -10,6 +10,7 @@
 | `.\process_note.ps1 -Private` | 批次跑 images\private\ 全部（自動 Local 模式） |
 | `.\process_note.ps1 IMG.jpg -Local` | 單張私密（只存本機，不上傳任何地方） |
 | `.\process_note.ps1 -All -Preview` | 批次跑，每張完成後自動開瀏覽器 |
+| `Start-Process powershell -ArgumentList "-NoExit -Command cd 'C:\Users\siang\Desktop\SerDes'; .\process_note.ps1 -All" -WindowStyle Normal` | 背景獨立視窗跑 -All，關掉原終端機不中斷 |
 | `.\process_note.ps1 A.jpg,B.jpg -Name "主題名稱"` | 多張合併 → 一份 MD + HTML，PDF 每頁一張圖 |
 
 ### 多張合併模式（-Name）
