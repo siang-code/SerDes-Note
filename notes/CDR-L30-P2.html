@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">SerDes Note</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  --bg:        #121212;
+  --bg2:       #1a1a1a;
+  --grid:      rgba(0,255,60,0.03);
+  --phosphor:  #39e87a;
+  --phosphor2: #1fa84e;
+  --text:      #D1D5DB;
+  --amber:     #f5a623;
+  --dim:       #2a4a2a;
+  --border:    rgba(57,232,122,0.18);
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui:   'Rajdhani', sans-serif;
+  --scan-size: 3px;
+}
+
+/* Light theme */
+body.light {
+  --bg:        #FFFFFF;
+  --bg2:       #F9FAFB;
+  --grid:      rgba(0,0,0,0.04);
+  --text:      #111827;
+  --dim:       #9CA3AF;
+  --border:    #E5E7EB;
+  --phosphor:  #059669;
+  --phosphor2: #047857;
+  --amber:     #D97706;
+  --scan-size: 0px;
+}
+
+body.light .section.math .section-body,
+body.light .section.units .section-body,
+body.light .section.qa .section-body,
+body.light .card-a,
+body.light .qa-item-a,
+body.light .modal-answer,
+body.light .ai-feedback,
+body.light .section.units .chart-infer { color: #374151; }
+
+body.light .title,
+body.light .section.mnemonic .section-body { text-shadow: none; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* CRT scanlines */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--scan-size) - 1px),
+    rgba(0,0,0,0.08) var(--scan-size)
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--phosphor2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-ui);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--phosphor);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(57,232,122,0.4);
+}
+
+.date-line {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--phosphor2);
+  display: flex;
+  gap: 2rem;
+}
+
+/* ── Image viewer ── */
+.image-wrap {
+  position: relative;
+  margin-bottom: 2.5rem;
+  cursor: zoom-in;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.image-wrap::before {
+  content: '[ RAW_SCAN ]';
+  position: absolute;
+  top: 0.5rem; left: 0.7rem;
+  font-size: 0.65rem;
+  color: var(--phosphor2);
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+.image-wrap::after {
+  content: '⊕ ZOOM';
+  position: absolute;
+  bottom: 0.5rem; right: 0.7rem;
+  font-size: 0.65rem;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  z-index: 2;
+}
+
+.note-img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.92) contrast(1.1);
+  transition: filter 0.2s;
+}
+.image-wrap:hover .note-img { filter: brightness(1) contrast(1.15); }
+
+/* Lightbox */
+.lightbox {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 2000;
+  cursor: zoom-out;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox.open { display: flex; }
+.lightbox img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border: 1px solid var(--border);
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.section.visible { opacity: 1; transform: none; }
+
+.section-header {
+  background: var(--bg2);
+  padding: 0.55rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-icon {
+  font-size: 0.9rem;
+  color: var(--amber);
+}
+
+.section-title {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.section-body {
+  padding: 1.2rem 1.2rem;
+  line-height: 1.8;
+  font-size: 0.88rem;
+}
+
+/* intro special */
+.section.intro .section-body {
+  color: var(--phosphor);
+  border-left: 3px solid var(--amber);
+  font-size: 0.9rem;
+}
+
+/* math section */
+.section.math .section-body { color: #b8e8c8; }
+
+/* ── Unit analysis sub-section ── */
+.section.units {
+  margin-top: -1.2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(245,166,35,0.15);
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+  margin-left: 1.5rem;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.section.units.visible { opacity: 1; transform: none; }
+.section.units .section-header {
+  background: rgba(245,166,35,0.05);
+  border-bottom: 1px solid rgba(245,166,35,0.12);
+}
+.section.units .section-title {
+  font-size: 0.72rem;
+  color: var(--amber);
+  opacity: 0.85;
+}
+.section.units .section-body {
+  font-size: 0.82rem;
+  color: #c8d8c8;
+  line-height: 1.75;
+}
+.section.units .unit-block {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(245,166,35,0.1);
+  border-radius: 2px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--amber);
+  line-height: 1.7;
+}
+.section.units .chart-infer {
+  background: rgba(57,232,122,0.04);
+  border: 1px solid rgba(57,232,122,0.12);
+  border-radius: 2px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  font-size: 0.78rem;
+  color: #8be8aa;
+  line-height: 1.7;
+}
+
+/* ── Q&A append section ── */
+.section.qa .section-body {
+  color: #b8d8e8;
+}
+.qa-item {
+  margin-bottom: 1.2rem;
+  border-left: 2px solid var(--phosphor2);
+  padding-left: 0.9rem;
+}
+.qa-item-q {
+  font-weight: 600;
+  color: var(--phosphor);
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+}
+.qa-item-a {
+  font-size: 0.82rem;
+  color: #8be8aa;
+  line-height: 1.75;
+}
+
+.section-body ol {
+  padding-left: 1.4rem;
+}
+
+.section-body ol li, .section-body ul li {
+  margin-bottom: 0.5rem;
+}
+
+.section-body strong {
+  color: var(--phosphor);
+}
+
+/* ── Quiz flashcards ── */
+.quiz-list { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.card {
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--phosphor2); }
+.card.open  { border-color: var(--phosphor); }
+
+.card-q {
+  padding: 0.7rem 1rem;
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  font-size: 0.85rem;
+}
+
+.card-num {
+  color: var(--amber);
+  min-width: 1.5rem;
+  font-weight: bold;
+}
+
+.card-q-text { flex: 1; color: var(--phosphor); }
+
+.card-toggle {
+  color: var(--phosphor2);
+  font-size: 0.7rem;
+  min-width: 1.5rem;
+  text-align: right;
+  margin-top: 0.1rem;
+  transition: transform 0.25s;
+}
+.card.open .card-toggle { transform: rotate(90deg); color: var(--phosphor); }
+
+.card-a {
+  display: none;
+  padding: 0.7rem 1rem 0.9rem 3.3rem;
+  font-size: 0.83rem;
+  line-height: 1.75;
+  color: #8be8aa;
+  background: rgba(57,232,122,0.03);
+  border-top: 1px solid var(--dim);
+}
+.card.open .card-a { display: block; }
+
+/* ── Mnemonic ── */
+.section.mnemonic .section-body {
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 1.5rem;
+  text-shadow: 0 0 10px rgba(245,166,35,0.3);
+}
+
+/* ── Feynman FAB ── */
+.fab {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  z-index: 500;
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(245,166,35,0.15);
+}
+.fab:hover {
+  background: rgba(245,166,35,0.08);
+  box-shadow: 0 0 20px rgba(245,166,35,0.3);
+}
+
+/* ── Feynman Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 1500;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  border-radius: 2px;
+  padding: 2rem;
+  max-width: 620px;
+  width: 90%;
+  position: relative;
+}
+
+.modal-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.modal-question {
+  font-family: var(--font-ui);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--phosphor);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.modal-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  outline: none;
+  margin-bottom: 1.2rem;
+  caret-color: var(--phosphor);
+}
+.modal-input::placeholder { color: var(--dim); }
+
+.modal-actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+}
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 1rem;
+  border: 1px solid;
+  border-radius: 2px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s;
+}
+.btn-reveal { border-color: var(--phosphor2); color: var(--phosphor2); }
+.btn-reveal:hover { background: rgba(57,232,122,0.08); }
+.btn-next   { border-color: var(--amber); color: var(--amber); }
+.btn-next:hover { background: rgba(245,166,35,0.08); }
+.btn-close  { border-color: var(--dim); color: var(--dim); }
+.btn-close:hover { border-color: var(--phosphor2); color: var(--phosphor2); }
+
+.modal-answer {
+  display: none;
+  font-size: 0.82rem;
+  color: #8be8aa;
+  line-height: 1.75;
+  border-top: 1px solid var(--dim);
+  margin-top: 0.5rem;
+  padding-top: 0.8rem;
+}
+.modal-answer.show { display: block; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ── Theme / Settings buttons ── */
+.theme-btn, .settings-btn {
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  letter-spacing: 0.08em;
+}
+.theme-btn { margin-left: auto; }
+.theme-btn:hover, .settings-btn:hover { border-color: var(--phosphor2); color: var(--phosphor2); }
+.settings-btn.active { border-color: var(--phosphor); color: var(--phosphor); }
+
+/* ── Chat FAB ── */
+.chat-fab {
+  position: fixed;
+  bottom: 2rem; right: 10.5rem;
+  z-index: 500;
+  background: var(--bg2);
+  border: 1px solid var(--phosphor);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(57,232,122,0.15);
+}
+.chat-fab:hover {
+  background: rgba(57,232,122,0.08);
+  box-shadow: 0 0 20px rgba(57,232,122,0.3);
+}
+
+/* ── Chat Panel ── */
+.chat-panel {
+  position: fixed;
+  top: 0; right: -420px;
+  width: 400px;
+  height: 100vh;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s ease;
+}
+.chat-panel.open { right: 0; }
+
+.chat-panel-header {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.chat-panel-title {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--phosphor);
+  text-transform: uppercase;
+}
+.chat-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--phosphor2);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  padding: 0.2rem;
+}
+.chat-close-btn:hover { color: var(--phosphor); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.chat-empty {
+  color: var(--dim);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-top: 2rem;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+}
+
+.chat-msg {
+  max-width: 88%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 2px;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  word-break: break-word;
+}
+.chat-msg.user {
+  align-self: flex-end;
+  background: rgba(57,232,122,0.07);
+  border: 1px solid var(--phosphor2);
+  color: var(--phosphor);
+}
+.chat-msg.ai {
+  align-self: flex-start;
+  background: rgba(245,166,35,0.04);
+  border: 1px solid rgba(245,166,35,0.25);
+  color: #c8dac8;
+  white-space: pre-wrap;
+}
+
+.chat-input-row {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.45rem 0.7rem;
+  outline: none;
+  border-radius: 2px;
+  caret-color: var(--phosphor);
+}
+.chat-input:focus { border-color: var(--phosphor2); }
+.chat-input::placeholder { color: var(--dim); }
+.chat-send-btn {
+  background: transparent;
+  border: 1px solid var(--phosphor2);
+  color: var(--phosphor2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.chat-send-btn:hover { background: rgba(57,232,122,0.08); }
+.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── API Key Modal ── */
+.apikey-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.apikey-modal.open { display: flex; }
+.apikey-modal .modal { border-color: var(--phosphor); max-width: 480px; }
+.apikey-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--dim);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.5rem 0.7rem;
+  outline: none;
+  border-radius: 2px;
+  margin-bottom: 0.6rem;
+  caret-color: var(--phosphor);
+}
+.apikey-input:focus { border-color: var(--phosphor2); }
+.apikey-hint {
+  font-size: 0.68rem;
+  color: var(--phosphor2);
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+.apikey-status {
+  font-size: 0.68rem;
+  margin-bottom: 0.8rem;
+  height: 1rem;
+}
+.apikey-status.ok  { color: var(--phosphor2); }
+.apikey-status.err { color: #e87a7a; }
+
+/* ── AI Score in Feynman ── */
+.ai-feedback {
+  display: none;
+  margin-top: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(57,232,122,0.22);
+  border-radius: 2px;
+  font-size: 0.78rem;
+  color: #b8e8c8;
+  line-height: 1.72;
+  background: rgba(57,232,122,0.03);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ai-feedback.show { display: block; }
+.ai-feedback-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--phosphor2);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.btn-ai   { border-color: var(--phosphor); color: var(--phosphor); }
+.btn-ai:hover { background: rgba(57,232,122,0.08); }
+.btn-ai:disabled { opacity: 0.35; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-top">
+      <span class="tag">SERDES // IC DESIGN</span>
+      <h1 class="title" id="note-title">—</h1>
+      <button class="theme-btn" id="theme-btn">◐ THEME</button>
+      <button class="settings-btn" id="settings-btn">⚙ API KEY</button>
+    </div>
+    <div class="date-line">
+      <span id="note-date">—</span>
+      <span id="note-src">—</span>
+    </div>
+  </div>
+
+  <div id="img-wrap"></div>
+
+  <div id="sections-container"></div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <img id="lb-img" src="" alt="">
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-btn">[ AI 問答 ]</button>
+
+<!-- Feynman FAB -->
+<button class="fab" id="feynman-btn">[ 費曼測試 ]</button>
+
+<!-- API Key Modal -->
+<div class="apikey-modal" id="apikey-modal">
+  <div class="modal">
+    <div class="modal-label">⚙ ANTHROPIC API KEY 設定</div>
+    <p class="apikey-hint">Key 僅存於本機 localStorage，不上傳任何伺服器。<br>取得金鑰：<strong style="color:var(--phosphor)">aistudio.google.com</strong> → Get API key（免費）</p>
+    <input type="password" class="apikey-input" id="apikey-input" placeholder="AIza...">
+    <div class="apikey-status" id="apikey-status"></div>
+    <div class="modal-actions">
+      <button class="btn btn-close" id="apikey-close">✕ 取消</button>
+      <button class="btn btn-next" id="apikey-save">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-panel-header">
+    <span class="chat-panel-title">◈ AI CHAT — gemini-2.5-flash</span>
+    <button class="chat-close-btn" id="chat-close">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty">筆記內容已載入為系統上下文。<br>直接提問吧。</div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" placeholder="問我關於這份筆記..." autocomplete="off">
+    <button class="chat-send-btn" id="chat-send">↵ 送出</button>
+  </div>
+</div>
+
+<!-- Feynman Modal -->
+<div class="modal-overlay" id="feynman-modal">
+  <div class="modal">
+    <div class="modal-label">▶ FEYNMAN TEST // 費曼測試</div>
+    <div class="modal-question" id="fm-question">—</div>
+    <input class="modal-input" id="fm-input" placeholder="你的解釋..." autocomplete="off">
+    <div class="modal-answer" id="fm-answer"></div>
+    <div class="ai-feedback" id="ai-feedback">
+      <div class="ai-feedback-label">▶ AI 評分結果</div>
+      <div id="ai-feedback-text"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-close" id="fm-close">✕ 關閉</button>
+      <button class="btn btn-ai" id="fm-ai-score">◈ AI 評分</button>
+      <button class="btn btn-reveal" id="fm-reveal">揭曉答案</button>
+      <button class="btn btn-next" id="fm-next">下一題 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── NOTE_DATA injected by process_note.ps1 ──
+const NOTE_DATA = {"date":"2026-04-05","title":"CDR-L30-P2","sections":[{"content":"[PLL-Based BB CDR] Jitter Generation (J_G) 於線性區之行為分析","type":"intro"},{"title":"數學推導","content":"本頁筆記主要探討當 PLL-based Bang-Bang CDR (BB-CDR) 接收到極度乾淨的訊號時，系統產生的固有抖動 (Jitter Generation, $J_G$) 該如何分析。\r\n\r\n1. **線性化假設 (Linear Approximation)**：\r\n   對於一個極度乾淨的輸入 (extremely clear input)，系統追蹤的相位誤差極小。\r\n   假設 BB-PD 的線性區間為 $\\phi_m = \\pm 0.03 \\text{ UI}$，而系統的 RMS 抖動 $J_{rms} = 0.01 \\text{ UI}$。\r\n   根據常態分佈，$\\pm 3\\sigma$ (即 $\\pm 0.03 \\text{ UI}$) 包含了 99.9% 的機率分佈。這意味著高達 99.9% 的取樣相位誤差都落在 BB-PD 的線性區間內 (Linear region)。因此，原本非線性的 BB-CDR 可以被近似為一個純線性 PLL 來分析。\r\n\r\n2. **轉移函數與主導雜訊 (Transfer Function \u0026 Dominant Noise)**：\r\n   在線性區操作下，來自 PD 與 CP 的雜訊相對微小可忽略 (Negligible)。\r\n   因此，大部分的抖動雜訊來自 VCO 本身 (Most noise comes from VCO)。\r\n   VCO 雜訊到輸出端的轉移函數為一個高通濾波器 (High-Pass Filter, HPF)：\r\n   $$ \\frac{\\phi_{out}}{\\phi_{vco}} \\cong \\frac{s}{s + 2\\xi\\omega_n} $$\r\n   *(註：此處為單極點高通之簡化模型，強調在頻寬附近的衰減特性)*\r\n\r\n3. **迴路參數推導 (Loop Parameters)**：\r\n   在線性區，等效 PD 增益為 $\\frac{I_p}{\\phi_m}$。代入標準二階 PLL 公式：\r\n   - 自然頻率：$\\omega_n = \\sqrt{\\frac{I_p K_{vco}}{\\phi_m C_p}}$\r\n   - 阻尼因數：$\\xi = \\frac{R_p}{2}\\sqrt{\\frac{I_p C_p K_{vco}}{\\phi_m}}$\r\n   - 迴路頻寬：由於通常設計為過阻尼 ($\\xi \\ge 1$)，頻寬可近似為 $\\omega_{BW} = 2\\xi\\omega_n$。\r\n   $$ \\omega_{BW,BB} = 2\\pi f_{BW,BB} = 2 \\left( \\frac{R_p}{2}\\sqrt{\\frac{I_p C_p K_{vco}}{\\phi_m}} \\right) \\left( \\sqrt{\\frac{I_p K_{vco}}{\\phi_m C_p}} \\right) = \\frac{I_p R_p K_{vco}}{\\phi_m} $$\r\n   *(註：若使用 JTRAN 模擬分析 slew 效應，頻寬模型會引入係數變為 $\\frac{2 I_p R_p K_{vco}}{\\pi \\phi_m}$)*\r\n\r\n4. **Jitter Generation 計算公式**：\r\n   將 VCO 的 $1/f^2$ 相位雜訊頻譜對此 HPF 進行積分，可得出 RMS 抖動的工程近似公式：\r\n   $$ J_{rms,BB} \\cong \\frac{f_0}{2} \\sqrt{\\frac{S_{\\phi,vco}(f_0)}{\\pi f_{BW,BB}}} \\text{ (UI)} $$\r\n   *(其中 $f_0$ 為評估相位雜訊的參考偏移頻率)*","type":"math"},{"title":"單位解析","content":"**公式單位消去：**\r\n- **迴路頻寬 $\\omega_{BW,BB}$**：\r\n  $$ \\frac{I_p \\times R_p \\times K_{vco}}{\\phi_m} \\Rightarrow \\frac{\\text{[A]} \\times \\text{[V/A]} \\times \\text{[rad/(s} \\cdot \\text{V)]}}{\\text{[rad]}} = \\frac{\\text{[V]} \\times \\text{[rad/(s} \\cdot \\text{V)]}}{\\text{[rad]}} = \\frac{\\text{[rad/s]}}{\\text{[rad]}} = \\text{[1/s]} = \\text{[rad/s]} $$\r\n  （嚴格來說，$\\omega$ 為角頻率，單位為 rad/s，物理量綱為 $1/s$，單位消去完美吻合）\r\n\r\n- **RMS Jitter $J_{rms,BB}$**（工程公式轉換）：\r\n  等號右邊的根號內部為 $\\frac{\\text{[rad}^2\\text{/Hz]}}{\\text{[Hz]}} = \\text{[rad}^2 \\cdot \\text{s}^2]$，開根號後為 $\\text{[rad} \\cdot \\text{s]}$。乘上外面的頻率參數 $f_0 \\text{ [1/s]}$ 後，得到 $\\text{[rad]}$。公式中直接標註 (UI)，代表該工程公式已隱含了將弧度 (rad) 除以 $2\\pi$ 轉換為 Unit Interval (UI) 的縮放常數。\r\n\r\n**圖表單位推斷：**\r\n📈 左上圖表 ($I_{av}$ vs $\\Delta\\phi$)：\r\n- X 軸：相位誤差 $\\Delta\\phi \\text{ [UI] 或 [rad]}$，典型範圍 $-\\phi_m \\sim +\\phi_m$ (約 $\\pm 0.03 \\text{ UI}$)。\r\n- Y 軸：平均充放電電流 $I_{av} \\text{ [}\\mu\\text{A]}$，典型範圍 $\\pm I_p$。\r\n\r\n📈 右上圖表 ($S_{\\phi,vco}$ vs $\\omega$)：\r\n- X 軸：偏移角頻率 $\\omega \\text{ [rad/s]}$（對數座標）。\r\n- Y 軸：相位雜訊 PSD $S_{\\phi,vco}(\\omega) \\text{ [rad}^2\\text{/Hz]}$，呈現 $\\propto 1/\\omega^2$ 之斜率。\r\n\r\n📈 下方圖表 (Phase Noise Profile $S_{\\phi}(f)$ vs $f$)：\r\n- X 軸：頻率 $f \\text{ [Hz]}$（對數座標），典型範圍 100 kHz ~ 100 MHz。\r\n- Y 軸：相位雜訊 $S_{\\phi}(f) \\text{ [dBc/Hz]}$ 或 $\\text{[rad}^2\\text{/Hz]}$，典型範圍 -80 ~ -120 dBc/Hz。\r\n- 物理意義：展示 CDR 輸出 (ckout) 雜訊在 $f_{BW}$ 前面以 1:1 低通 (LPF) 跟隨輸入資料雜訊，在 $f_{BW}$ 後面以 1:1 高通 (HPF) 跟隨 VCO free-running 雜訊。","type":"units"},{"title":"白話物理意義","content":"當輸入訊號乾淨到幾乎沒有抖動時，BB-CDR 的相位追蹤會侷限在極小的線性微調區內；此時系統自己產生的抖動 (Jitter Generation) 幾乎全都是「VCO 本身在高頻抑制不掉的雜訊」所貢獻的。","type":"plain"},{"title":"生活化比喻","content":"想像你是一個司機（CDR），開著一台引擎有點震動的車（VCO）跟著前面的引導車（Input Data）。如果引導車開得非常平穩（Clean input），你幾乎不需要猛打方向盤，只會在車道內極小幅度地微調方向（操作在線性區）。這時候，車子整體的晃動感（Jitter Generation），主要就是來自你這台車本身的引擎震動（VCO phase noise），而不是因為你跟錯車。","type":"analogy"},{"title":"面試必考點","items":[{"question":"在量測 BB-CDR 的 Jitter Generation (J_G) 時，為何可以用線性 PLL 模型來分析？","answer":"因為量測 J_G 時會給予一個極度乾淨 (Jitter-free) 的輸入訊號。此時系統的相位誤差變異數極小，高達 99.9% 的時間都落在 BB-PD 狹窄的線性區間內，因此非線性行為被弱化，可視為線性系統。"},{"question":"BB-CDR 操作在線性區時，J_G 的主要雜訊貢獻來源是哪個 Block？為什麼？","answer":"是 VCO。因為輸入端乾淨且誤差小，PD/CP 貢獻的雜訊可忽略；而 VCO 的雜訊透過 High-Pass Filter 轉移函數傳遞到輸出端，頻寬外的低頻雜訊被壓抑，但高頻雜訊會直接漏到輸出端成為 J_G。"},{"question":"要如何從系統層級降低 CDR 的 Jitter Generation？","answer":"根據公式 $J_{rms} \\propto 1/\\sqrt{f_{BW}}$，可以透過增加迴路頻寬 ($f_{BW,BB}$) 來擴大 HPF 對 VCO 雜訊的抑制範圍；或者直接採用 Phase noise 更優良的 VCO ($S_{\\phi,vco}$ 較小)。"}],"type":"quiz"},{"content":"","type":"mnemonic"}],"imageUrl":"../images/done/CDR-L30-P2.jpg"};
+
+// ── Render ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.title = NOTE_DATA.title + ' | SerDes Note';
+  document.getElementById('page-title').textContent = NOTE_DATA.title + ' | SerDes Note';
+  document.getElementById('note-title').textContent = NOTE_DATA.title;
+  document.getElementById('note-date').textContent = '分析日期：' + NOTE_DATA.date;
+  // 支援單張 imageUrl 或多張 imageUrls
+  const urls = NOTE_DATA.imageUrls || (NOTE_DATA.imageUrl ? [NOTE_DATA.imageUrl] : []);
+  document.getElementById('note-src').textContent = '原始圖片：' + urls.join(', ');
+
+  const imgWrap = document.getElementById('img-wrap');
+  urls.forEach((url, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'image-wrap';
+    wrap.style.pageBreakAfter = idx < urls.length - 1 ? 'always' : 'auto';
+    const img = document.createElement('img');
+    img.className = 'note-img';
+    img.src = url;
+    img.alt = '筆記原圖 ' + (idx + 1);
+    wrap.appendChild(img);
+    imgWrap.appendChild(wrap);
+  });
+
+  const container = document.getElementById('sections-container');
+  const icons = { intro:'◈', math:'∑', units:'📏', plain:'◎', analogy:'⌂', quiz:'?', mnemonic:'★', qa:'💬' };
+  const labels = { intro:'概覽', math:'數學推導', units:'單位解析', plain:'白話物理意義', analogy:'生活化比喻', quiz:'面試必考點', mnemonic:'記憶口訣', qa:'問題延伸' };
+
+  NOTE_DATA.sections.forEach((sec, i) => {
+    const el = document.createElement('div');
+    el.className = 'section ' + sec.type;
+    el.style.transitionDelay = (i * 0.07) + 's';
+
+    if (sec.type === 'quiz') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${sec.title || labels[sec.type]}</span>
+        </div>
+        <div class="section-body">
+          <div class="quiz-list">
+            ${sec.items.map((q, n) => `
+              <div class="card" data-idx="${n}">
+                <div class="card-q">
+                  <span class="card-num">Q${n+1}</span>
+                  <span class="card-q-text">${escHtml(q.question)}</span>
+                  <span class="card-toggle">▶</span>
+                </div>
+                <div class="card-a">${escHtml(q.answer)}</div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    } else if (sec.type === 'mnemonic') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${escHtml(sec.content)}</div>`;
+    } else if (sec.type === 'units') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${renderUnits(sec.content)}</div>`;
+    } else if (sec.type === 'qa') {
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${labels[sec.type]}</span>
+        </div>
+        <div class="section-body">${renderQA(sec.items)}</div>`;
+    } else {
+      const title = sec.title || labels[sec.type];
+      el.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon">${icons[sec.type]}</span>
+          <span class="section-title">${title}</span>
+        </div>
+        <div class="section-body">${mdToHtml(sec.content)}</div>`;
+    }
+
+    container.appendChild(el);
+  });
+
+  // KaTeX render
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left:'$$', right:'$$', display:true},
+      {left:'$', right:'$', display:false}
+    ],
+    throwOnError: false
+  });
+
+  // Intersection Observer for reveal
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.section').forEach(s => obs.observe(s));
+
+  // Quiz cards toggle
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('open'));
+  });
+
+  // Lightbox
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lb-img');
+  imgWrap.addEventListener('click', e => { if (e.target.tagName === 'IMG') { lbImg.src = e.target.src; lb.classList.add('open'); } });
+  lb.addEventListener('click', () => lb.classList.remove('open'));
+
+  // Feynman
+  const quizSection = NOTE_DATA.sections.find(s => s.type === 'quiz');
+  const allQ = quizSection ? quizSection.items : [];
+  let fmIdx = 0;
+
+  function openFeynman() {
+    if (!allQ.length) return;
+    fmIdx = Math.floor(Math.random() * allQ.length);
+    showFeynman();
+    document.getElementById('feynman-modal').classList.add('open');
+  }
+
+  function showFeynman() {
+    window._fmIdx = fmIdx;
+    document.getElementById('fm-question').textContent = allQ[fmIdx].question;
+    document.getElementById('fm-input').value = '';
+    const ans = document.getElementById('fm-answer');
+    ans.textContent = allQ[fmIdx].answer;
+    ans.classList.remove('show');
+    renderMathInElement(document.getElementById('fm-question'), { delimiters: [{left:'$',right:'$',display:false},{left:'$$',right:'$$',display:true}], throwOnError:false });
+    renderMathInElement(ans, { delimiters: [{left:'$',right:'$',display:false},{left:'$$',right:'$$',display:true}], throwOnError:false });
+  }
+
+  document.getElementById('feynman-btn').addEventListener('click', openFeynman);
+  document.getElementById('fm-close').addEventListener('click', () => document.getElementById('feynman-modal').classList.remove('open'));
+  document.getElementById('fm-reveal').addEventListener('click', () => document.getElementById('fm-answer').classList.toggle('show'));
+  document.getElementById('fm-next').addEventListener('click', () => {
+    fmIdx = (fmIdx + 1) % allQ.length;
+    showFeynman();
+  });
+});
+
+function renderUnits(text) {
+  // Split into unit-block (公式消去) and chart-infer (圖表推斷) sub-blocks
+  let html = mdToHtml(text);
+  // Wrap lines starting with 📈 in chart-infer div
+  html = html.replace(/<p>(📈[\s\S]*?)<\/p>/g, '<div class="chart-infer">$1</div>');
+  // Wrap lines containing [X] × [Y] style unit derivations in unit-block div
+  html = html.replace(/<p>([^<]*\[[\w\/]+\][^<]*=[^<]*)<\/p>/g, '<div class="unit-block">$1</div>');
+  return html;
+}
+
+function renderQA(items) {
+  if (!items || !items.length) return '<p style="color:var(--dim)">尚無延伸問題</p>';
+  return items.map((q, i) => `
+    <div class="qa-item">
+      <div class="qa-item-q">Q${i+1}：${escHtml(q.question)}</div>
+      <div class="qa-item-a">${mdToHtml(q.answer)}</div>
+    </div>`).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function mdToHtml(text) {
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Numbered list items
+  text = text.replace(/^(\d+)\.\s+(.+)$/gm, '<li data-ol>$2</li>');
+  // Bullet list items
+  text = text.replace(/^\*\s+(.+)$/gm, '<li data-ul>$1</li>');
+  // Wrap ol items
+  text = text.replace(/(<li data-ol>[^\n]*\n?)+/g, m => '<ol>' + m.replace(/ data-ol/g,'') + '</ol>');
+  // Wrap ul items
+  text = text.replace(/(<li data-ul>[^\n]*\n?)+/g, m => '<ul>' + m.replace(/ data-ul/g,'') + '</ul>');
+  // Horizontal rule
+  text = text.replace(/^---$/gm, '<hr style="border-color:var(--dim);margin:0.8rem 0">');
+  // Paragraphs (split by double newline)
+  text = text.split(/\n{2,}/).map(p => {
+    p = p.trim();
+    if (!p || p.startsWith('<ol>') || p.startsWith('<ul>') || p.startsWith('<hr')) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+  return text;
+}
+
+// ════════════════════════════════════════════════
+// Gemini API Integration (免費 tier)
+// ════════════════════════════════════════════════
+
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_API   = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':streamGenerateContent';
+
+function getApiKey() { return localStorage.getItem('gemini_api_key') || ''; }
+function setApiKey(k) { localStorage.setItem('gemini_api_key', k); }
+
+function buildSystemPrompt() {
+  let sys = `你是一位嚴格的 IC 設計助教，專精高速 SerDes / PLL / CDR / TIA 等電路設計（55nm及以下製程）。\n`;
+  sys += `現在的學習筆記：${NOTE_DATA.title}（${NOTE_DATA.date}）\n\n`;
+  sys += `以下是筆記的完整內容：\n`;
+  NOTE_DATA.sections.forEach(sec => {
+    if (sec.type === 'quiz') {
+      sys += `\n## 面試必考點\n`;
+      sec.items.forEach((q, i) => {
+        sys += `Q${i+1}: ${q.question}\nA: ${q.answer}\n`;
+      });
+    } else if (sec.content) {
+      const t = sec.title || ({ intro:'概覽', math:'數學推導', plain:'白話物理意義', analogy:'生活化比喻', mnemonic:'記憶口訣' })[sec.type] || sec.type;
+      sys += `\n## ${t}\n${sec.content}\n`;
+    }
+  });
+  sys += `\n請以繁體中文回答，精準且言簡意賅。`;
+  return sys;
+}
+
+// Gemini 用 "model" 而非 "assistant"
+function toGeminiHistory(messages) {
+  return messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : m.role,
+    parts: [{ text: m.content }]
+  }));
+}
+
+async function streamClaude(messages, onChunk, onDone, onError) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    document.getElementById('apikey-modal').classList.add('open');
+    document.getElementById('apikey-input').focus();
+    if (onError) onError('請先設定 Gemini API Key');
+    return;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(GEMINI_API + '?alt=sse&key=' + encodeURIComponent(apiKey), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: buildSystemPrompt() }] },
+        contents: toGeminiHistory(messages),
+        generationConfig: { maxOutputTokens: 1024 }
+      })
+    });
+  } catch (e) {
+    if (onError) onError('網路錯誤：' + e.message);
+    onDone();
+    return;
+  }
+
+  if (!resp.ok) {
+    let errMsg = resp.statusText;
+    try { const j = await resp.json(); errMsg = j.error?.message || errMsg; } catch {}
+    if (onError) onError('[' + resp.status + '] ' + errMsg);
+    onDone();
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim();
+      if (!d || d === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(d);
+        const text = evt.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) onChunk(text);
+      } catch {}
+    }
+  }
+  onDone();
+}
+
+// ── Theme Toggle ──
+const themeBtn = document.getElementById('theme-btn');
+if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+});
+
+// ── Settings Modal ──
+const settingsBtn   = document.getElementById('settings-btn');
+const apikeyModal   = document.getElementById('apikey-modal');
+const apikeyInput   = document.getElementById('apikey-input');
+const apikeyStatus  = document.getElementById('apikey-status');
+const apikeyClose   = document.getElementById('apikey-close');
+const apikeySave    = document.getElementById('apikey-save');
+
+settingsBtn.addEventListener('click', () => {
+  apikeyInput.value = getApiKey();
+  apikeyStatus.textContent = getApiKey() ? '✓ 已設定' : '尚未設定';
+  apikeyStatus.className = 'apikey-status ' + (getApiKey() ? 'ok' : 'err');
+  apikeyModal.classList.add('open');
+});
+apikeyClose.addEventListener('click', () => apikeyModal.classList.remove('open'));
+apikeySave.addEventListener('click', () => {
+  const k = apikeyInput.value.trim();
+  if (!k) { apikeyStatus.textContent = '請輸入 API Key'; apikeyStatus.className = 'apikey-status err'; return; }
+  setApiKey(k);
+  settingsBtn.classList.add('active');
+  apikeyStatus.textContent = '✓ 已儲存';
+  apikeyStatus.className = 'apikey-status ok';
+  setTimeout(() => apikeyModal.classList.remove('open'), 700);
+});
+apikeyInput.addEventListener('keydown', e => { if (e.key === 'Enter') apikeySave.click(); });
+if (getApiKey()) settingsBtn.classList.add('active');
+
+// ── Chat Panel ──
+const chatBtn      = document.getElementById('chat-btn');
+const chatPanel    = document.getElementById('chat-panel');
+const chatClose    = document.getElementById('chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput    = document.getElementById('chat-input');
+const chatSend     = document.getElementById('chat-send');
+
+let chatHistory = [];
+let chatStreaming = false;
+
+chatBtn.addEventListener('click', () => chatPanel.classList.toggle('open'));
+chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
+
+function appendChatMsg(role, text) {
+  const empty = chatMessages.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const q = chatInput.value.trim();
+  if (!q || chatStreaming) return;
+  chatInput.value = '';
+  chatStreaming = true;
+  chatSend.disabled = true;
+
+  chatHistory.push({ role: 'user', content: q });
+  appendChatMsg('user', q);
+
+  const aiDiv = appendChatMsg('ai', '');
+  let buf = '';
+
+  await streamClaude(
+    chatHistory,
+    (chunk) => {
+      buf += chunk;
+      aiDiv.textContent = buf;
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    },
+    () => {
+      chatHistory.push({ role: 'assistant', content: buf });
+      chatStreaming = false;
+      chatSend.disabled = false;
+      chatInput.focus();
+    },
+    (err) => {
+      aiDiv.textContent = '⚠ ' + err;
+      chatStreaming = false;
+      chatSend.disabled = false;
+    }
+  );
+}
+
+chatSend.addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+
+// ── AI Score in Feynman ──
+const fmAiScore    = document.getElementById('fm-ai-score');
+const aiFeedback   = document.getElementById('ai-feedback');
+const aiFeedbackTx = document.getElementById('ai-feedback-text');
+let aiScoring = false;
+
+fmAiScore.addEventListener('click', async () => {
+  const q = document.getElementById('fm-question').textContent;
+  const userAns = document.getElementById('fm-input').value.trim();
+  const correctAns = document.getElementById('fm-answer').textContent ||
+    (NOTE_DATA.sections.find(s => s.type === 'quiz')?.items[window._fmIdx || 0]?.answer || '');
+
+  if (!userAns) {
+    aiFeedbackTx.textContent = '請先輸入你的答案。';
+    aiFeedback.classList.add('show');
+    return;
+  }
+  if (aiScoring) return;
+  aiScoring = true;
+  fmAiScore.disabled = true;
+
+  aiFeedbackTx.textContent = '評分中...';
+  aiFeedback.classList.add('show');
+  let buf = '';
+
+  const evalMessages = [{
+    role: 'user',
+    content: `問題：${q}\n\n學生的回答：${userAns}\n\n參考答案：${correctAns}\n\n請評分（1-10分）並給出具體改進建議，說明哪裡答對了、哪裡還不夠精確。請用繁體中文，簡潔有力。`
+  }];
+
+  await streamClaude(
+    evalMessages,
+    (chunk) => {
+      buf += chunk;
+      aiFeedbackTx.textContent = buf;
+    },
+    () => {
+      aiScoring = false;
+      fmAiScore.disabled = false;
+    },
+    (err) => {
+      aiFeedbackTx.textContent = '⚠ ' + err;
+      aiScoring = false;
+      fmAiScore.disabled = false;
+    }
+  );
+});
+
+// reset AI feedback when question changes
+const origShowFeynman = window._showFeynmanOrig;
+document.getElementById('fm-next').addEventListener('click', () => {
+  aiFeedback.classList.remove('show');
+  aiFeedbackTx.textContent = '';
+  fmAiScore.disabled = false;
+  aiScoring = false;
+}, true);
+document.getElementById('fm-close').addEventListener('click', () => {
+  aiFeedback.classList.remove('show');
+  aiScoring = false;
+  fmAiScore.disabled = false;
+}, true);
+</script>
+</body>
+</html>
