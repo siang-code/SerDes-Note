@@ -1,82 +1,44 @@
 # PLL-L1-P1
 
-> 分析日期：2026-04-05
-> 原始圖片：images/done/PLL-L1-P1.jpg
+> 分析日期：2026-04-03
+> 原始圖片：images/PLL-L1-P1.jpg
 
 ---
 
-
 ---
-## 基礎鎖相迴路 (Basic Charge-Pump PLL) 架構與開迴路增益分析
+## PLL 頻率合成器與 CDR 基礎 (Frequency Synthesizer & Clock Data Recovery)
 
 ### 數學推導
-1. **相位偵測器 (PD) 與電荷幫浦 (CP) 增益：**
-   當輸入參考時脈相位 $\phi_{ref}$ 與回授時脈相位 $\phi_{div}$ 存在相位誤差 $\Delta\phi$ 時，CP 會輸出平均電流 $I_{avg}$。在一個 $2\pi$ 的相位週期內，輸出的電流比例為：
-   $I_{avg} = I_{cp} \cdot \frac{\Delta\phi}{2\pi}$
-   因此 PD+CP 的等效轉移函數（增益）為：
-   $K_{pd} = \frac{I_{avg}}{\Delta\phi} = \frac{I_{cp}}{2\pi}$
+**1. PLL 頻率倍增鎖定關係**
+*   **假設與條件**：當 PLL 處於鎖定狀態 (Phase-Locked) 時，相位頻率偵測器 (PFD) 兩端輸入的頻率與相位必須相等。
+*   $f_{\text{PFD\_in1}} = f_{\text{PFD\_in2}}$
+*   已知參考時脈頻率為 $f_{\text{ref}}$，回授路徑經過除 $N$ 除頻器 (Divider)，因此到達 PFD 的回授頻率為 $f_{\text{PFD\_in2}} = \frac{f_{\text{out}}}{N}$
+*   **推導結果**：$f_{\text{ref}} = \frac{f_{\text{out}}}{N} \implies f_{\text{out}} = N \cdot f_{\text{ref}}$
+*   *(筆記實例對應：藍芽系統中 $f_{\text{ref}}=1\text{MHz}$，透過改變可程式化除頻器 $N=2400 \sim 2527$，即可精準產生 $2.4\text{GHz} \sim 2.527\text{GHz}$，且步進剛好為 1MHz 的載波頻率。)*
 
-2. **迴路濾波器 (Loop Filter, LF) 轉移函數：**
-   採用最基礎的 Type-II PLL 濾波器，由電阻 $R$ 與電容 $C$ 串聯組成，其阻抗轉移函數 $Z(s)$ 為：
-   $Z(s) = R + \frac{1}{sC} = \frac{1+sRC}{sC}$
-   產生的控制電壓為：$V_{ctrl}(s) = I_{avg}(s) \cdot Z(s)$
-
-3. **壓控振盪器 (VCO) 與除頻器 (Divider) 模型：**
-   VCO 將控制電壓轉換為輸出頻率，由於相位是角頻率的積分，在 $s$ 域中 VCO 的相位轉移函數為：
-   $\phi_{out}(s) = V_{ctrl}(s) \cdot \frac{K_{vco}}{s}$
-   經過除頻器後，回授到 PD 的相位為：
-   $\phi_{div}(s) = \phi_{out}(s) \cdot \frac{1}{N}$
-
-4. **開迴路增益 (Open-Loop Gain, $L(s)$) 推導：**
-   將迴路上的所有模組增益相乘（由 $\Delta\phi$ 傳遞至 $\phi_{div}$）：
-   $L(s) = K_{pd} \cdot Z(s) \cdot \frac{K_{vco}}{s} \cdot \frac{1}{N}$
-   $L(s) = \left(\frac{I_{cp}}{2\pi}\right) \cdot \left(\frac{1+sRC}{sC}\right) \cdot \left(\frac{K_{vco}}{s}\right) \cdot \left(\frac{1}{N}\right)$
-   $L(s) = \frac{I_{cp} \cdot K_{vco}}{2\pi N} \cdot \frac{1+sRC}{s^2 C}$
-   
-   **推導說明：** 從最終式分母的 $s^2$ 可以清楚看出這是一個 Type-II 系統（包含兩個原點極點，一個來自 LF 的電容積分，一個來自 VCO 的頻率對相位積分）。分子部分的 $(1+sRC)$ 則貢獻了一個位於 $\omega_z = \frac{1}{RC}$ 的零點。
-
-### 單位解析
-**公式單位消去：**
-1. **$K_{pd}$ 單位：**
-   $I_{cp}$ 單位為 $[A]$，$2\pi$ 代表相位週期，單位為 $[rad]$。
-   $K_{pd} = \frac{I_{cp}}{2\pi} \rightarrow \frac{[A]}{[rad]} = [A/rad]$
-2. **$Z(s)$ 單位：**
-   電阻與容抗的單位皆為歐姆 $[\Omega]$，即 $[V/A]$。
-3. **VCO 積分器單位：**
-   若 $K_{vco}$ 定義為 $[rad/s/V]$，$s$ 為複頻率單位 $[1/s]$。
-   $\frac{K_{vco}}{s} \rightarrow \frac{[rad/s/V]}{[1/s]} = [rad/V]$
-4. **整體迴路增益 $L(s)$ 單位：**
-   除頻器 $1/N$ 為無因次量 $[1]$。
-   $L(s) = K_{pd} \times Z(s) \times \frac{K_{vco}}{s} \times \frac{1}{N}$
-   $L(s) = [A/rad] \times [V/A] \times [rad/V] \times [1] = [無單位]$
-   **結論：** 單位完美消去，開迴路轉移函數 $L(s)$ 為無因次量，符合物理意義。
-
-**圖表單位推斷：**
-📈 圖表單位推斷：
-- **Bode Plot (開迴路增益 $|L(j\omega)|$ 頻率響應)：**
-  - **X 軸：** 角頻率 $\omega$ $[rad/s]$ (Log Scale)，典型範圍 $10^5 \sim 10^{10} rad/s$。
-  - **Y 軸：** 增益大小 $|L(j\omega)|$ $[dB]$，典型範圍 $-40 \sim +80 dB$。
-  - **關鍵特徵：** 初始斜率為 $-40 dB/dec$（雙積分效應），遇到零點 $\omega_z$ $[rad/s]$ 後斜率折向 $-20 dB/dec$，並在交越頻率 $\omega_c$ $[rad/s]$ 處穿過 $0 dB$。
+**2. 為何不能只用 Filter？(高 Q 值不可行性)**
+*   **規格要求**：筆記中提到，相鄰通道 (間距 $1\text{MHz}$) 的洩漏功率必須壓制在 $-60\text{dBc}$ 以下。
+*   **Q 值估算**：若中心頻率 $f_0 = 2.4\text{GHz}$，3dB 頻寬 $BW = 1\text{MHz}$，基本品質因數 $Q = \frac{f_0}{BW} = \frac{2.4\text{GHz}}{1\text{MHz}} = 2400$。
+*   **極限挑戰**：但這只是衰減 3dB 的要求。要在區區 1MHz 之外就衰減 60dB ($10^3$ 倍電壓比)，濾波器的滾降 (Roll-off) 必須極度陡峭 (Super sharp filter)。根據高階濾波器響應反推，等效需要的 $Q \approx 10^6$。
+*   **物理限制**：在先進或成熟 CMOS 製程中，片上電感 (On-chip Inductor) 的 Q 值頂多 10~20 左右。
+*   **結論**：$10^6 \gg 20$，因此在 IC 內部絕對不可能單靠濾波器來選頻，**必須**透過 PLL 這種主動負回授系統來進行精準的頻率合成。
 
 ### 白話物理意義
-Type-II PLL 就像是一個具有「雙重記憶」的追蹤系統：電荷幫浦累積時間誤差變為電壓（第一重記憶），VCO 再把電壓累積成相位（第二重記憶），加上電阻 R 產生「零點」來預測未來的變化趨勢，防止系統追蹤過頭而產生無窮振盪。
+PLL 就像一個「自動變速箱加避震器」，它利用低頻精準的石英震盪器作為標竿，透過負回授機制不斷修正壓控震盪器（VCO）的頻率與相位，藉此「無中生有」地產生穩定且乾淨的高頻時脈，或者在 CDR 中從雜亂無章的資料流裡還原出隱藏的時脈節奏。
 
 ### 生活化比喻
-想像你在高速公路上開車，要跟前車保持完全固定的車距（鎖相）：
-- **PD+CP：** 你的眼睛與大腦，看到距離差太多，就決定踩油門或煞車的力道（電流）。
-- **迴路濾波器的電容 C：** 車子的速度累積。如果你只死盯著現在的距離去踩油門，很容易因為車子反應慢而衝過頭（不穩定振盪）。
-- **迴路濾波器的電阻 R：** 你的「預測能力」（零點）。加上 R 相當於你不但看「距離差」，還會看「距離變化的速度」。快撞到時你會提早收油門，車子就能平穩無感地跟上前車。
+想像你在帶領一個千人管弦樂團（VCO，容易跑調的高頻訊號），你不可能每秒鐘都去聽每個人的音準。所以你（PFD）看著手邊極度精準的節拍器（Reference Clock，準確但節拍慢），然後每隔 100 拍去抽查樂團的進度（除頻器 Divider）。如果樂團拉快了，你就揮手讓他們慢一點（Charge Pump 抽電流降壓）；如果慢了，就讓他們快一點（充電流升壓）。最終，整個樂團就能穩穩地維持在節拍器速度的 100 倍，完全不走音。
 
 ### 面試必考點
-1. **問題：為什麼基礎 Type-II PLL 需要在迴路濾波器中加入電阻 $R$？**
-   → **答案：** 系統有兩個原點極點（VCO 積分與 LF 電容積分）會造成 -180 度的相位延遲。若無電阻，交越頻率處的相位裕度 (Phase Margin) 將逼近 0 度甚至負值，導致迴路震盪。加入 $R$ 產生了左半平面的零點 $\omega_z = \frac{1}{RC}$，可提供相位的領先（Phase Lead），把相位往上拉，確保系統穩定。
+1. **問題：為什麼 RF/SerDes 系統不直接用自由震盪的 LC VCO 產生高頻，而一定要包在 PLL 迴路裡？**
+   $\rightarrow$ **答案：** 因為高頻 LC VCO 會隨製程、電壓、溫度 (PVT) 產生嚴重的頻率飄移，且 Phase Noise (相位雜訊) 很大。PLL 能將外部低頻、高穩定度（高 Q 值的石英晶體）的頻率，精準倍頻到高頻，同時利用 Loop Filter (迴路濾波器) 的低通特性，壓制 VCO 在低頻帶的 Phase Noise。如筆記所述，若想純靠 Filter 濾波達到 60dBc 相鄰通道拒斥，需要 $Q \sim 10^6$，這在晶片上是物理不可能的。
 
-2. **問題：在 Bode Plot 中，如果把 Charge Pump 電流 $I_{cp}$ 加大兩倍，對交越頻率 $\omega_c$ 與穩定度有什麼影響？**
-   → **答案：** $I_{cp}$ 加大會使整個 $L(s)$ 的 Magnitude 曲線上移（Gain 變大），導致交越頻率 $\omega_c$ 跟著往高頻偏移（頻寬變寬）。若 $\omega_c$ 偏離零點 $\omega_z$ 太遠，甚至推到接近寄生極點的位置，會導致 Phase Margin 顯著下降，系統阻尼比變小，時域響應會出現嚴重的 Overshoot 甚至震盪。
+2. **問題：在 CDR 應用中，輸入 NRZ Data 的頻譜有什麼特性？為什麼筆記特別註明 "No clock power info"？**
+   $\rightarrow$ **答案：** Random NRZ data (隨機不歸零資料) 的頻譜是一個 Sinc function ($(\sin x/x)^2$)。如筆記圖示，在 bit rate ($1/T_b$, $2/T_b$) 的整數倍處剛好是 Null (零點)。也就是說，資料本身在「時脈頻率」上的能量是零！所以傳統的線性 PLL 看到資料會不知所措（無法直接鎖定），必須透過非線性操作（例如 Edge detection / Alexander Phase Detector）找出資料轉態邊緣 (Data Transitions)，才能把時脈資訊「擠」出來並重新對齊資料 (Retime the data)。
 
-3. **問題：在寫 $L(s)$ 方程式時，為什麼除頻器 $N$ 會在分母？這對高頻寬 PLL 設計有何挑戰？**
-   → **答案：** 因為回授路徑將 VCO 輸出的高頻時脈除了 $N$，代表回授給 PD 的相位變化被縮小了 $N$ 倍，使得等效迴路增益下降（$1/N$）。當設計輸出頻率極高（$N$ 很大）的 PLL 時，為了維持足夠的迴路頻寬 $\omega_c$，必須大幅增加 $I_{cp}$ 或 $K_{vco}$ 來補償 $N$ 帶來的衰減，這會衍生出 CP 漏電流、雜訊增加以及 VCO 寄生電容難以匹配等進階挑戰。
+3. **問題：什麼是展頻時脈 (Spread Spectrum Clock, SSC)？為什麼高速介面 (如 PCIe, SATA) 都要用？**
+   $\rightarrow$ **答案：** SSC 是故意讓 PLL 的輸出頻率在一個小範圍內（例如向下偏移 5000ppm）呈現三角波式的低頻調變 (Frequency Modulation)。這樣做的目的是把原本集中在單一主頻率上極高的輻射能量 Peak，往下壓平並打散到相鄰頻帶，藉此通過嚴格的 EMI (電磁干擾) 輻射標準認證。
 
 **記憶口訣：**
-**雙積分必加零，RC 穩定靠它行；電流變大頻寬增，相位裕度要盯緊！**
+合成靠倍頻，濾波 Q 難尋；資料無鐘看邊緣，展頻打散防干擾。
 ---
